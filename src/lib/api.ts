@@ -178,3 +178,18 @@ export async function updateTask(
     body: JSON.stringify(data),
   })
 }
+
+// ── Statuses ─────────────────────────────────────────────────────────────────
+export interface StatusResponse {
+  id: string
+  listId: string
+  name: string
+  color: string | null
+  order: number | null
+  isDefault: boolean | null
+}
+
+export async function fetchStatuses(listId: string): Promise<StatusResponse[]> {
+  const data = await fetchJSON<{ statuses: StatusResponse[] }>(`/lists/${listId}/statuses`)
+  return data.statuses
+}

@@ -12,11 +12,13 @@ import {
   fetchTasks,
   createTask,
   updateTask,
+  fetchStatuses,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
   type ListResponse,
   type TaskResponse,
+  type StatusResponse,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -180,5 +182,15 @@ export function useUpdateTask() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
+  })
+}
+
+// ── Status Hooks ───────────────────────────────────────────────────────────
+
+export function useStatuses(listId: string | undefined) {
+  return useQuery<StatusResponse[]>({
+    queryKey: ["statuses", listId],
+    queryFn: () => fetchStatuses(listId!),
+    enabled: !!listId,
   })
 }

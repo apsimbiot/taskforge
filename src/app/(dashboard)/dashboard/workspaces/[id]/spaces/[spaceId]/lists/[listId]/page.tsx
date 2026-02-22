@@ -6,17 +6,14 @@ import {
   List,
   LayoutGrid,
   GanttChart,
-  Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { StatusBadge } from "@/components/status-badge"
 import { TimeTracker } from "@/components/time-tracker"
-import { useTasks, useCreateTask, useUpdateTask } from "@/hooks/useQueries"
+import { KanbanBoard } from "@/components/kanban-board"
+import { useTasks, useCreateTask, useUpdateTask, useStatuses } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
 
@@ -100,56 +97,6 @@ function TaskListItem({
   )
 }
 
-function TaskBoardColumn({
-  status,
-  tasks,
-  onStatusChange,
-}: {
-  status: TaskStatus
-  tasks: TaskResponse[]
-  onStatusChange: (taskId: string, status: string) => void
-}) {
-  return (
-    <div className="flex flex-col w-72 min-w-[288px] bg-muted/30 rounded-lg">
-      <div className="flex items-center gap-2 px-3 py-2 border-b">
-        <div
-          className="w-3 h-3 rounded-full"
-          style={{ backgroundColor: STATUS_COLORS[status] }}
-        />
-        <span className="text-sm font-medium">{STATUS_LABELS[status]}</span>
-        <Badge variant="secondary" className="ml-auto text-xs">
-          {tasks.length}
-        </Badge>
-      </div>
-      <div className="flex-1 p-2 space-y-2 overflow-auto">
-        {tasks.map((task) => (
-          <Card
-            key={task.id}
-            className="cursor-pointer hover:shadow-md transition-all duration-150"
-          >
-            <CardContent className="p-3">
-              <p className="text-sm font-medium mb-2">{task.title}</p>
-              <div className="flex items-center gap-2">
-                {task.priority && task.priority !== "none" && (
-                  <StatusBadge
-                    variant="priority"
-                    priority={task.priority as "low" | "medium" | "high" | "urgent"}
-                  />
-                )}
-                {task.dueDate && (
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(task.dueDate).toLocaleDateString()}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function ListPage({
   params,
 }: {
@@ -157,10 +104,11 @@ export default function ListPage({
 }) {
   const { id: workspaceId, spaceId, listId } = use(params)
   const { data: tasks, isLoading } = useTasks(listId)
+  const { data: statuses } = useStatuses(listId)
   const createTaskMutation = useCreateTask()
   const updateTaskMutation = useUpdateTask()
 
-  const [viewMode, setViewMode] = useState<ViewMode>("list")
+  const [viewMode, setViewMode] = useState<ViewMode>("board")
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [showNewTask, setShowNewTask] = useState(false)
 
@@ -183,13 +131,13 @@ export default function ListPage({
     [updateTaskMutation]
   )
 
-  const groupedTasks = STATUS_ORDER.reduce(
+  const groupedTasks = tasks ? STATUS_ORDER.reduce(
     (acc, status) => {
-      acc[status] = tasks?.filter((t) => (t.status || "todo") === status) || []
+      acc[status] = tasks.filter((t) => (t.status || "todo") === status) || []
       return acc
     },
     {} as Record<TaskStatus, TaskResponse[]>
-  )
+  ) : {}
 
   return (
     <div className="flex flex-col h-full">
@@ -322,15 +270,26 @@ export default function ListPage({
             )}
           </div>
         ) : viewMode === "board" ? (
-          <div className="flex gap-4 p-6 overflow-x-auto h-full">
-            {STATUS_ORDER.map((status) => (
-              <TaskBoardColumn
-                key={status}
-                status={status}
-                tasks={groupedTasks[status]}
-                onStatusChange={handleStatusChange}
+          <div className="h-full">
+            {statuses && statuses.length > 0 ? (
+              <KanbanBoard
+                tasks={tasks || []}
+                statuses={statuses}
+                listId={listId}
               />
-            ))}
+            ) : (
+              <div className="p-12 text-center">
+                <LayoutGrid className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No statuses configured</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  This list doesn't have any statuses yet. Create tasks to get started.
+                </p>
+                <Button onClick={() => setShowNewTask(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           // Gantt view placeholder
