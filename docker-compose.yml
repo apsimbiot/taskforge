@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: taskforge
-      POSTGRES_PASSWORD: taskforge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskforge}
       POSTGRES_DB: taskforge
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -26,8 +26,8 @@ services:
     container_name: taskforge-minio
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: taskforge
-      MINIO_ROOT_PASSWORD: taskforge
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-taskforge}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-taskforge}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -55,9 +55,9 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_URL: postgresql://taskforge:taskforge@postgres:5432/taskforge
+      DATABASE_URL: postgresql://taskforge:${POSTGRES_PASSWORD:-taskforge}@postgres:5432/taskforge
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-your-secret-key-change-in-production}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-$(openssl rand -base64 32)}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       
       # OAuth Providers (optional)
@@ -69,8 +69,8 @@ services:
       # MinIO / S3
       S3_ENDPOINT: http://minio:9000
       S3_BUCKET: taskforge
-      S3_ACCESS_KEY: taskforge
-      S3_SECRET_KEY: taskforge
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskforge}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-taskforge}
       S3_REGION: us-east-1
     ports:
       - "3000:3000"
