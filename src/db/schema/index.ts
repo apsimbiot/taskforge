@@ -1,0 +1,577 @@
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+  integer,
+  boolean,
+  jsonb,
+  primaryKey,
+  index,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  passwordHash: text("password_hash"),
+  avatarUrl: text("avatar_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ─── Workspaces ───────────────────────────────────────────────────────────────
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Workspace Members ────────────────────────────────────────────────────────
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 50 }).notNull().default("member"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.workspaceId, t.userId] }),
+    index("wm_workspace_idx").on(t.workspaceId),
+    index("wm_user_idx").on(t.userId),
+  ]
+);
+
+// ─── Spaces ───────────────────────────────────────────────────────────────────
+export const spaces = pgTable(
+  "spaces",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    color: varchar("color", { length: 7 }).default("#6366f1"),
+    icon: varchar("icon", { length: 50 }).default("folder"),
+    order: integer("order").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("spaces_workspace_idx").on(t.workspaceId)]
+);
+
+// ─── Folders ──────────────────────────────────────────────────────────────────
+export const folders = pgTable(
+  "folders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    order: integer("order").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("folders_space_idx").on(t.spaceId)]
+);
+
+// ─── Lists ────────────────────────────────────────────────────────────────────
+export const lists = pgTable(
+  "lists",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    folderId: uuid("folder_id").references(() => folders.id, {
+      onDelete: "cascade",
+    }),
+    spaceId: uuid("space_id")
+      .notNull()
+      .references(() => spaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    order: integer("order").default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("lists_folder_idx").on(t.folderId),
+    index("lists_space_idx").on(t.spaceId),
+  ]
+);
+
+// ─── Tasks ────────────────────────────────────────────────────────────────────
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 500 }).notNull(),
+    description: jsonb("description").default({}),
+    status: varchar("status", { length: 50 }).default("todo"),
+    priority: varchar("priority", { length: 20 }).default("none"),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dueDate: timestamp("due_date"),
+    timeEstimate: integer("time_estimate"),
+    timeSpent: integer("time_spent").default(0),
+    order: integer("order").default(0),
+    customFields: jsonb("custom_fields").default({}),
+    parentTaskId: uuid("parent_task_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("tasks_list_idx").on(t.listId),
+    index("tasks_creator_idx").on(t.creatorId),
+    index("tasks_status_idx").on(t.status),
+    index("tasks_priority_idx").on(t.priority),
+    index("tasks_parent_idx").on(t.parentTaskId),
+    index("tasks_due_date_idx").on(t.dueDate),
+  ]
+);
+
+// ─── Task Assignees ───────────────────────────────────────────────────────────
+export const taskAssignees = pgTable(
+  "task_assignees",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ columns: [t.taskId, t.userId] }),
+    index("ta_task_idx").on(t.taskId),
+    index("ta_user_idx").on(t.userId),
+  ]
+);
+
+// ─── Task Comments ────────────────────────────────────────────────────────────
+export const taskComments = pgTable(
+  "task_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("comments_task_idx").on(t.taskId)]
+);
+
+// ─── Task Activities ──────────────────────────────────────────────────────────
+export const taskActivities = pgTable(
+  "task_activities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: varchar("action", { length: 50 }).notNull(),
+    field: varchar("field", { length: 50 }),
+    oldValue: text("old_value"),
+    newValue: text("new_value"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("activities_task_idx").on(t.taskId)]
+);
+
+// ─── Custom Field Definitions ─────────────────────────────────────────────────
+export const customFieldDefinitions = pgTable(
+  "custom_field_definitions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: varchar("type", { length: 50 }).notNull(),
+    options: jsonb("options").default({}),
+    order: integer("order").default(0),
+  },
+  (t) => [index("cfd_list_idx").on(t.listId)]
+);
+
+// ─── Time Entries ─────────────────────────────────────────────────────────────
+export const timeEntries = pgTable(
+  "time_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startTime: timestamp("start_time").notNull(),
+    endTime: timestamp("end_time"),
+    duration: integer("duration"),
+    description: text("description"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("te_task_idx").on(t.taskId),
+    index("te_user_idx").on(t.userId),
+  ]
+);
+
+// ─── Statuses ─────────────────────────────────────────────────────────────────
+export const statuses = pgTable(
+  "statuses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    color: varchar("color", { length: 7 }).default("#6366f1"),
+    order: integer("order").default(0),
+    isDefault: boolean("is_default").default(false),
+  },
+  (t) => [index("statuses_list_idx").on(t.listId)]
+);
+
+// ─── Labels ───────────────────────────────────────────────────────────────────
+export const labels = pgTable(
+  "labels",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    color: varchar("color", { length: 7 }).default("#6366f1"),
+  },
+  (t) => [index("labels_workspace_idx").on(t.workspaceId)]
+);
+
+// ─── Task Labels ──────────────────────────────────────────────────────────────
+export const taskLabels = pgTable(
+  "task_labels",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    labelId: uuid("label_id")
+      .notNull()
+      .references(() => labels.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.labelId] })]
+);
+
+// ─── Sprints ──────────────────────────────────────────────────────────────────
+export const sprints = pgTable(
+  "sprints",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+    status: varchar("status", { length: 20 }).default("planned"),
+    goal: text("goal"),
+  },
+  (t) => [index("sprints_workspace_idx").on(t.workspaceId)]
+);
+
+// ─── Sprint Tasks ─────────────────────────────────────────────────────────────
+export const sprintTasks = pgTable(
+  "sprint_tasks",
+  {
+    sprintId: uuid("sprint_id")
+      .notNull()
+      .references(() => sprints.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.sprintId, t.taskId] })]
+);
+
+// ─── Views ────────────────────────────────────────────────────────────────────
+export const views = pgTable(
+  "views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id").references(() => lists.id, {
+      onDelete: "cascade",
+    }),
+    spaceId: uuid("space_id").references(() => spaces.id, {
+      onDelete: "cascade",
+    }),
+    name: varchar("name", { length: 255 }).notNull(),
+    type: varchar("type", { length: 50 }).notNull(),
+    filters: jsonb("filters").default({}),
+    sort: jsonb("sort").default({}),
+  },
+  (t) => [
+    index("views_list_idx").on(t.listId),
+    index("views_space_idx").on(t.spaceId),
+  ]
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RELATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const usersRelations = relations(users, ({ many }) => ({
+  ownedWorkspaces: many(workspaces),
+  workspaceMembers: many(workspaceMembers),
+  createdTasks: many(tasks),
+  taskAssignees: many(taskAssignees),
+  taskComments: many(taskComments),
+  taskActivities: many(taskActivities),
+  timeEntries: many(timeEntries),
+}));
+
+export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
+  owner: one(users, {
+    fields: [workspaces.ownerId],
+    references: [users.id],
+  }),
+  members: many(workspaceMembers),
+  spaces: many(spaces),
+  labels: many(labels),
+  sprints: many(sprints),
+}));
+
+export const workspaceMembersRelations = relations(
+  workspaceMembers,
+  ({ one }) => ({
+    workspace: one(workspaces, {
+      fields: [workspaceMembers.workspaceId],
+      references: [workspaces.id],
+    }),
+    user: one(users, {
+      fields: [workspaceMembers.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const spacesRelations = relations(spaces, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [spaces.workspaceId],
+    references: [workspaces.id],
+  }),
+  folders: many(folders),
+  lists: many(lists),
+  views: many(views),
+}));
+
+export const foldersRelations = relations(folders, ({ one, many }) => ({
+  space: one(spaces, {
+    fields: [folders.spaceId],
+    references: [spaces.id],
+  }),
+  lists: many(lists),
+}));
+
+export const listsRelations = relations(lists, ({ one, many }) => ({
+  folder: one(folders, {
+    fields: [lists.folderId],
+    references: [folders.id],
+  }),
+  space: one(spaces, {
+    fields: [lists.spaceId],
+    references: [spaces.id],
+  }),
+  tasks: many(tasks),
+  customFieldDefinitions: many(customFieldDefinitions),
+  statuses: many(statuses),
+  views: many(views),
+}));
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  list: one(lists, {
+    fields: [tasks.listId],
+    references: [lists.id],
+  }),
+  creator: one(users, {
+    fields: [tasks.creatorId],
+    references: [users.id],
+  }),
+  parentTask: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+    relationName: "subtasks",
+  }),
+  subtasks: many(tasks, { relationName: "subtasks" }),
+  assignees: many(taskAssignees),
+  comments: many(taskComments),
+  activities: many(taskActivities),
+  timeEntries: many(timeEntries),
+  taskLabels: many(taskLabels),
+}));
+
+export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAssignees.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskAssignees.userId],
+    references: [users.id],
+  }),
+}));
+
+export const taskCommentsRelations = relations(taskComments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskComments.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [taskComments.userId],
+    references: [users.id],
+  }),
+}));
+
+export const taskActivitiesRelations = relations(
+  taskActivities,
+  ({ one }) => ({
+    task: one(tasks, {
+      fields: [taskActivities.taskId],
+      references: [tasks.id],
+    }),
+    user: one(users, {
+      fields: [taskActivities.userId],
+      references: [users.id],
+    }),
+  })
+);
+
+export const customFieldDefinitionsRelations = relations(
+  customFieldDefinitions,
+  ({ one }) => ({
+    list: one(lists, {
+      fields: [customFieldDefinitions.listId],
+      references: [lists.id],
+    }),
+  })
+);
+
+export const timeEntriesRelations = relations(timeEntries, ({ one }) => ({
+  task: one(tasks, {
+    fields: [timeEntries.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [timeEntries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const statusesRelations = relations(statuses, ({ one }) => ({
+  list: one(lists, {
+    fields: [statuses.listId],
+    references: [lists.id],
+  }),
+}));
+
+export const labelsRelations = relations(labels, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [labels.workspaceId],
+    references: [workspaces.id],
+  }),
+  taskLabels: many(taskLabels),
+}));
+
+export const taskLabelsRelations = relations(taskLabels, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskLabels.taskId],
+    references: [tasks.id],
+  }),
+  label: one(labels, {
+    fields: [taskLabels.labelId],
+    references: [labels.id],
+  }),
+}));
+
+export const sprintsRelations = relations(sprints, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [sprints.workspaceId],
+    references: [workspaces.id],
+  }),
+  sprintTasks: many(sprintTasks),
+}));
+
+export const sprintTasksRelations = relations(sprintTasks, ({ one }) => ({
+  sprint: one(sprints, {
+    fields: [sprintTasks.sprintId],
+    references: [sprints.id],
+  }),
+  task: one(tasks, {
+    fields: [sprintTasks.taskId],
+    references: [tasks.id],
+  }),
+}));
+
+export const viewsRelations = relations(views, ({ one }) => ({
+  list: one(lists, {
+    fields: [views.listId],
+    references: [lists.id],
+  }),
+  space: one(spaces, {
+    fields: [views.spaceId],
+    references: [spaces.id],
+  }),
+}));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TYPE EXPORTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+export type Workspace = typeof workspaces.$inferSelect;
+export type NewWorkspace = typeof workspaces.$inferInsert;
+export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
+export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
+export type Space = typeof spaces.$inferSelect;
+export type NewSpace = typeof spaces.$inferInsert;
+export type Folder = typeof folders.$inferSelect;
+export type NewFolder = typeof folders.$inferInsert;
+export type List = typeof lists.$inferSelect;
+export type NewList = typeof lists.$inferInsert;
+export type Task = typeof tasks.$inferSelect;
+export type NewTask = typeof tasks.$inferInsert;
+export type TaskComment = typeof taskComments.$inferSelect;
+export type NewTaskComment = typeof taskComments.$inferInsert;
+export type TaskActivity = typeof taskActivities.$inferSelect;
+export type NewTaskActivity = typeof taskActivities.$inferInsert;
+export type CustomFieldDefinition = typeof customFieldDefinitions.$inferSelect;
+export type NewCustomFieldDefinition = typeof customFieldDefinitions.$inferInsert;
+export type TimeEntry = typeof timeEntries.$inferSelect;
+export type NewTimeEntry = typeof timeEntries.$inferInsert;
+export type Status = typeof statuses.$inferSelect;
+export type NewStatus = typeof statuses.$inferInsert;
+export type Label = typeof labels.$inferSelect;
+export type NewLabel = typeof labels.$inferInsert;
+export type Sprint = typeof sprints.$inferSelect;
+export type NewSprint = typeof sprints.$inferInsert;
+export type View = typeof views.$inferSelect;
+export type NewView = typeof views.$inferInsert;
