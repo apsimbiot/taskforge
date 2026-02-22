@@ -13,12 +13,26 @@ import {
   createTask,
   updateTask,
   fetchStatuses,
+  fetchSprints,
+  fetchSprint,
+  createSprint,
+  updateSprint,
+  deleteSprint,
+  addTaskToSprint,
+  removeTaskFromSprint,
+  fetchNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+  fetchDashboardStats,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
   type ListResponse,
   type TaskResponse,
   type StatusResponse,
+  type SprintResponse,
+  type SprintDetailResponse,
+  type DashboardStats,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -192,5 +206,137 @@ export function useStatuses(listId: string | undefined) {
     queryKey: ["statuses", listId],
     queryFn: () => fetchStatuses(listId!),
     enabled: !!listId,
+  })
+}
+
+// ── Sprint Hooks ──────────────────────────────────────────────────────────
+
+export function useSprints(workspaceId: string | undefined) {
+  return useQuery<SprintResponse[]>({
+    queryKey: ["sprints", workspaceId],
+    queryFn: () => fetchSprints(workspaceId!),
+    enabled: !!workspaceId,
+  })
+}
+
+export function useSprint(sprintId: string | undefined) {
+  return useQuery<SprintDetailResponse>({
+    queryKey: ["sprint", sprintId],
+    queryFn: () => fetchSprint(sprintId!),
+    enabled: !!sprintId,
+  })
+}
+
+export function useCreateSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workspaceId,
+      ...data
+    }: {
+      workspaceId: string
+      name: string
+      startDate: string
+      endDate: string
+      goal?: string
+    }) => createSprint(workspaceId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["sprints", variables.workspaceId] })
+    },
+  })
+}
+
+export function useUpdateSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      sprintId,
+      ...data
+    }: {
+      sprintId: string
+      name?: string
+      startDate?: string
+      endDate?: string
+      status?: string
+      goal?: string
+    }) => updateSprint(sprintId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["sprint", variables.sprintId] })
+      queryClient.invalidateQueries({ queryKey: ["sprints"] })
+    },
+  })
+}
+
+export function useDeleteSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (sprintId: string) => deleteSprint(sprintId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sprints"] })
+    },
+  })
+}
+
+export function useAddTaskToSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sprintId, taskId }: { sprintId: string; taskId: string }) =>
+      addTaskToSprint(sprintId, taskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["sprint", variables.sprintId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+export function useRemoveTaskFromSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ sprintId, taskId }: { sprintId: string; taskId: string }) =>
+      removeTaskFromSprint(sprintId, taskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["sprint", variables.sprintId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+// ── Notification Hooks ───────────────────────────────────────────────────
+
+export function useNotifications(unreadOnly = false) {
+  return useQuery({
+    queryKey: ["notifications", unreadOnly],
+    queryFn: () => fetchNotifications(unreadOnly),
+  })
+}
+
+export function useMarkNotificationRead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (notificationId: string) => markNotificationRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+    },
+  })
+}
+
+export function useMarkAllNotificationsRead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => markAllNotificationsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] })
+    },
+  })
+}
+
+// ── Dashboard Stats Hook ────────────────────────────────────────────────
+
+export function useDashboardStats(workspaceId: string | undefined) {
+  return useQuery<DashboardStats>({
+    queryKey: ["dashboard-stats", workspaceId],
+    queryFn: () => fetchDashboardStats(workspaceId!),
+    enabled: !!workspaceId,
+    refetchInterval: 30000, // Refetch every 30s
   })
 }

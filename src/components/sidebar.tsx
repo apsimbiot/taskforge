@@ -13,6 +13,7 @@ import {
   PanelLeft,
   FolderClosed,
   ListTodo,
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -302,6 +303,22 @@ export function Sidebar() {
             <TooltipContent side="right">Dashboard</TooltipContent>
           </Tooltip>
 
+          {selectedWorkspaceId && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
+                >
+                  <Zap className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Sprints</TooltipContent>
+            </Tooltip>
+          )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -347,20 +364,33 @@ export function Sidebar() {
         </div>
 
         {/* Quick actions */}
-        <div className="flex items-center gap-1 px-3 py-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="flex-1 justify-start gap-2 h-8"
-            onClick={() => router.push("/dashboard")}
-          >
-            <Home className="h-4 w-4" />
-            <span className="text-sm">Home</span>
-          </Button>
-          <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2 h-8">
-            <Search className="h-4 w-4" />
-            <span className="text-sm">Search</span>
-          </Button>
+        <div className="flex flex-col gap-0.5 px-3 py-2">
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1 justify-start gap-2 h-8"
+              onClick={() => router.push("/dashboard")}
+            >
+              <Home className="h-4 w-4" />
+              <span className="text-sm">Home</span>
+            </Button>
+            <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2 h-8">
+              <Search className="h-4 w-4" />
+              <span className="text-sm">Search</span>
+            </Button>
+          </div>
+          {selectedWorkspaceId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 h-8"
+              onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
+            >
+              <Zap className="h-4 w-4" />
+              <span className="text-sm">Sprints</span>
+            </Button>
+          )}
         </div>
 
         <Separator />

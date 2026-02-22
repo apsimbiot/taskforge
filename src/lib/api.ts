@@ -193,3 +193,117 @@ export async function fetchStatuses(listId: string): Promise<StatusResponse[]> {
   const data = await fetchJSON<{ statuses: StatusResponse[] }>(`/lists/${listId}/statuses`)
   return data.statuses
 }
+
+// ── Sprints ─────────────────────────────────────────────────────────────────
+export interface SprintResponse {
+  id: string
+  workspaceId: string
+  name: string
+  startDate: string
+  endDate: string
+  status: "planned" | "active" | "completed"
+  goal: string | null
+  createdAt: string
+}
+
+export interface SprintDetailResponse {
+  sprint: SprintResponse
+  tasks: TaskResponse[]
+}
+
+export async function fetchSprints(workspaceId: string): Promise<SprintResponse[]> {
+  const data = await fetchJSON<{ sprints: SprintResponse[] }>(`/workspaces/${workspaceId}/sprints`)
+  return data.sprints
+}
+
+export async function fetchSprint(sprintId: string): Promise<SprintDetailResponse> {
+  return fetchJSON<SprintDetailResponse>(`/sprints/${sprintId}`)
+}
+
+export async function createSprint(
+  workspaceId: string,
+  data: { name: string; startDate: string; endDate: string; goal?: string }
+): Promise<{ sprint: SprintResponse }> {
+  return fetchJSON(`/workspaces/${workspaceId}/sprints`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateSprint(
+  sprintId: string,
+  data: Partial<{ name: string; startDate: string; endDate: string; status: string; goal: string }>
+): Promise<{ sprint: SprintResponse }> {
+  return fetchJSON(`/sprints/${sprintId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteSprint(sprintId: string): Promise<void> {
+  await fetchJSON(`/sprints/${sprintId}`, { method: "DELETE" })
+}
+
+export async function addTaskToSprint(sprintId: string, taskId: string): Promise<void> {
+  await fetchJSON(`/sprints/${sprintId}/tasks`, {
+    method: "POST",
+    body: JSON.stringify({ taskId }),
+  })
+}
+
+export async function removeTaskFromSprint(sprintId: string, taskId: string): Promise<void> {
+  await fetchJSON(`/sprints/${sprintId}/tasks/${taskId}`, {
+    method: "DELETE",
+  })
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────
+export interface NotificationResponse {
+  id: string
+  type: string
+  title: string
+  message: string | null
+  read: boolean
+  entityType: string | null
+  entityId: string | null
+  createdAt: string
+}
+
+export async function fetchNotifications(unreadOnly = false): Promise<{ notifications: NotificationResponse[]; unreadCount: number }> {
+  const url = unreadOnly ? "/notifications?unread=true" : "/notifications"
+  return fetchJSON(url)
+}
+
+export async function markNotificationRead(notificationId: string): Promise<void> {
+  await fetchJSON("/notifications", {
+    method: "PATCH",
+    body: JSON.stringify({ notificationId }),
+  })
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await fetchJSON("/notifications", {
+    method: "PATCH",
+    body: JSON.stringify({ markAllRead: true }),
+  })
+}
+
+// ── Dashboard Stats ───────────────────────────────────────────────────────
+export interface DashboardStats {
+  stats: {
+    totalTasks: number
+    completed: number
+    inProgress: number
+    overdue: number
+  }
+  tasksByStatus: Record<string, number>
+  tasksByPriority: Record<string, number>
+  tasksCompletedPerDay: { date: string; count: number }[]
+  sprintVelocity: { sprintId: string; sprintName: string; completedTasks: number }[]
+  workloadPerAssignee: { userId: string; name: string; avatarUrl: string | null; total: number; completed: number }[]
+  overdueTasks: { id: string; title: string; status: string | null; priority: string | null; dueDate: string | null; listId: string }[]
+}
+
+export async function fetchDashboardStats(workspaceId: string): Promise<DashboardStats> {
+  return fetchJSON<DashboardStats>(`/workspaces/${workspaceId}/dashboard`)
+}
