@@ -41,6 +41,10 @@ import {
   createComment,
   deleteComment,
   fetchTaskDependencies,
+  fetchCustomFields,
+  createCustomField,
+  updateCustomField,
+  deleteCustomField,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
@@ -54,6 +58,7 @@ import {
   type TaskAssigneeResponse,
   type SubtaskResponse,
   type CommentResponse,
+  type CustomFieldDefinitionResponse,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -575,5 +580,65 @@ export function useTaskDependencies(taskId: string | undefined) {
     queryKey: ["task-dependencies", taskId],
     queryFn: () => fetchTaskDependencies(taskId!),
     enabled: !!taskId,
+  })
+}
+
+// ── Custom Fields Hooks ─────────────────────────────────────────────────
+
+export function useCustomFields(listId: string | undefined) {
+  return useQuery<CustomFieldDefinitionResponse[]>({
+    queryKey: ["custom-fields", listId],
+    queryFn: () => fetchCustomFields(listId!),
+    enabled: !!listId,
+  })
+}
+
+export function useCreateCustomField() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      listId,
+      ...data
+    }: {
+      listId: string
+      name: string
+      type: string
+      options?: Record<string, unknown>
+    }) => createCustomField(listId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["custom-fields", variables.listId] })
+    },
+  })
+}
+
+export function useUpdateCustomField() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      listId,
+      fieldId,
+      ...data
+    }: {
+      listId: string
+      fieldId: string
+      name?: string
+      type?: string
+      options?: Record<string, unknown>
+      order?: number
+    }) => updateCustomField(listId, fieldId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["custom-fields", variables.listId] })
+    },
+  })
+}
+
+export function useDeleteCustomField() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ listId, fieldId }: { listId: string; fieldId: string }) =>
+      deleteCustomField(listId, fieldId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["custom-fields", variables.listId] })
+    },
   })
 }

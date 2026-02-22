@@ -146,7 +146,35 @@ export function TaskTableRow({
 
       {/* Status badge */}
       <div className="w-28 flex-shrink-0">
-        <StatusBadge variant="status" status={status as "todo" | "in_progress" | "review" | "done" | null} />
+        {onStatusChange ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-start cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5">
+                <StatusBadge variant="status" status={status as "todo" | "in_progress" | "review" | "done" | null} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => onStatusChange(task.id, "todo")}>
+                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: STATUS_COLORS.todo }} />
+                To Do
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusChange(task.id, "in_progress")}>
+                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: STATUS_COLORS.in_progress }} />
+                In Progress
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusChange(task.id, "review")}>
+                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: STATUS_COLORS.review }} />
+                Review
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onStatusChange(task.id, "done")}>
+                <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: STATUS_COLORS.done }} />
+                Done
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <StatusBadge variant="status" status={status as "todo" | "in_progress" | "review" | "done" | null} />
+        )}
       </div>
 
       {/* Priority */}

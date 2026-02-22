@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +31,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MarkdownEditor } from "./markdown-editor"
 import { MarkdownRenderer } from "./markdown-renderer"
 import {
@@ -68,6 +69,13 @@ const PRIORITIES: { value: Priority; label: string; color: string; dotColor: str
   { value: "high", label: "High", color: "bg-orange-500", dotColor: "#f97316" },
   { value: "urgent", label: "Urgent", color: "bg-red-500", dotColor: "#ef4444" },
 ]
+
+const STATUS_COLORS: Record<string, string> = {
+  todo: "#6b7280",
+  in_progress: "#3b82f6",
+  review: "#eab308",
+  done: "#22c55e",
+}
 
 function normalizeStatusName(name: string): string {
   const slug = name.toLowerCase().replace(/\s+/g, "_")
@@ -242,10 +250,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
   const handleToggleSubtask = (subtask: SubtaskResponse) => {
     if (!task) return
-    toggleSubtaskMutation.mutate({
-      taskId: task.id,
-      subtaskId: subtask.id,
-      completed: subtask.status !== "done",
+    // Subtasks are full tasks - toggle between todo and done
+    const newStatus = subtask.status === "done" ? "todo" : "done"
+    updateTaskMutation.mutate({
+      taskId: subtask.id,
+      status: newStatus,
     })
   }
 
@@ -720,7 +729,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
               <Separator />
 
-              {/* Subtasks */}
+              {/* Subtasks - Full Task Display */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -737,55 +746,107 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
                 {subtasksLoading ? (
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
                   </div>
                 ) : (
                   <div className="space-y-1.5 mb-3">
                     {subtasks.map((subtask) => (
                       <div
                         key={subtask.id}
-                        className="flex items-center gap-2 group text-sm p-2 rounded hover:bg-muted/50"
+                        className="flex items-center gap-2 group text-sm p-2 rounded hover:bg-muted/50 border border-transparent hover:border-border/50"
                       >
+                        {/* Status indicator - clickable to cycle */}
                         <button
                           onClick={() => handleToggleSubtask(subtask)}
-                          className={cn(
-                            "w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors",
-                            subtask.status === "done"
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "border-muted-foreground/40 hover:border-primary"
-                          )}
+                          className="flex-shrink-0 hover:scale-110 transition-transform"
+                          title={`Status: ${subtask.status || 'todo'}`}
                         >
-                          {subtask.status === "done" && (
-                            <Check className="h-3 w-3" />
-                          )}
-                        </button>
-                        {editingSubtaskId === subtask.id ? (
-                          <Input
-                            value={editingSubtaskTitle}
-                            onChange={(e) => setEditingSubtaskTitle(e.target.value)}
-                            onBlur={handleSaveEditSubtask}
-                            onKeyDown={(e) => e.key === "Enter" && handleSaveEditSubtask()}
-                            className="h-6 flex-1"
-                            autoFocus
+                          <div
+                            className="w-3.5 h-3.5 rounded-full border-2"
+                            style={{
+                              borderColor: STATUS_COLORS[subtask.status || "todo"] || STATUS_COLORS.todo,
+                              backgroundColor: subtask.status === "done" ? STATUS_COLORS.done : "transparent",
+                            }}
                           />
-                        ) : (
-                          <span
+                        </button>
+
+                        {/* Title - clickable */}
+                        <button
+                          onClick={() => {
+                            // Would open subtask detail - for now just let it be
+                          }}
+                          className={cn(
+                            "flex-1 text-left truncate cursor-pointer hover:text-primary transition-colors",
+                            subtask.status === "done" && "line-through text-muted-foreground"
+                          )}
+                          title={subtask.title}
+                        >
+                          {subtask.title}
+                        </button>
+
+                        {/* Priority badge */}
+                        {subtask.priority && subtask.priority !== "none" && (
+                          <Badge
+                            variant="secondary"
                             className={cn(
-                              "flex-1 cursor-pointer",
-                              subtask.status === "done" && "line-through text-muted-foreground"
+                              "text-[10px] h-5 px-1.5 flex-shrink-0",
+                              subtask.priority === "urgent" && "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+                              subtask.priority === "high" && "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+                              subtask.priority === "medium" && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+                              subtask.priority === "low" && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                             )}
-                            onClick={() => handleStartEditSubtask(subtask)}
                           >
-                            {subtask.title}
+                            {subtask.priority}
+                          </Badge>
+                        )}
+
+                        {/* Assignee avatars - max 2 */}
+                        {subtask.assignees && subtask.assignees.length > 0 && (
+                          <div className="flex -space-x-1 flex-shrink-0">
+                            {subtask.assignees.slice(0, 2).map((assignee) => (
+                              <Avatar key={assignee.id} className="h-5 w-5 border border-background">
+                                <AvatarImage src={assignee.user.avatarUrl || undefined} />
+                                <AvatarFallback className="text-[8px]">
+                                  {getInitials(assignee.user.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {subtask.assignees.length > 2 && (
+                              <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px]">
+                                +{subtask.assignees.length - 2}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Due date */}
+                        {subtask.dueDate && (
+                          <span className={cn(
+                            "text-[10px] flex-shrink-0",
+                            new Date(subtask.dueDate) < new Date() ? "text-red-500 font-medium" : "text-muted-foreground"
+                          )}>
+                            {new Date(subtask.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                           </span>
                         )}
-                        <button
-                          onClick={() => handleDeleteSubtask(subtask.id)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+
+                        {/* Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-opacity">
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteSubtask(subtask.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     ))}
                   </div>
@@ -820,30 +881,15 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
               <Separator />
 
-              {/* Checklist (placeholder - could reuse subtasks concept) */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckSquare className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Checklist</span>
-                </div>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add checklist
-                </Button>
-              </div>
-
-              <Separator />
-
               {/* Attachments (placeholder) */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Paperclip className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Attachments</span>
                 </div>
-                <Button variant="outline" size="sm" className="w-full justify-start">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add attachments
-                </Button>
+                <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-md">
+                  Coming soon
+                </div>
               </div>
             </div>
           </div>

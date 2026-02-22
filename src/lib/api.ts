@@ -518,3 +518,45 @@ export async function fetchTaskDependencies(taskId: string): Promise<TaskDepende
   const data = await fetchJSON<{ blockedBy: string[]; blocks: string[] }>(`/tasks/${taskId}/dependencies`)
   return data
 }
+
+// ── Custom Fields ─────────────────────────────────────────────────────────
+export interface CustomFieldDefinitionResponse {
+  id: string
+  listId: string
+  name: string
+  type: string
+  options: Record<string, unknown>
+  order: number
+}
+
+export async function fetchCustomFields(listId: string): Promise<CustomFieldDefinitionResponse[]> {
+  const data = await fetchJSON<{ fields: CustomFieldDefinitionResponse[] }>(`/lists/${listId}/custom-fields`)
+  return data.fields
+}
+
+export async function createCustomField(
+  listId: string,
+  data: { name: string; type: string; options?: Record<string, unknown> }
+): Promise<{ field: CustomFieldDefinitionResponse }> {
+  return fetchJSON(`/lists/${listId}/custom-fields`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateCustomField(
+  listId: string,
+  fieldId: string,
+  data: Partial<{ name: string; type: string; options: Record<string, unknown>; order: number }>
+): Promise<{ field: CustomFieldDefinitionResponse }> {
+  return fetchJSON(`/lists/${listId}/custom-fields/${fieldId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteCustomField(listId: string, fieldId: string): Promise<void> {
+  await fetchJSON(`/lists/${listId}/custom-fields/${fieldId}`, {
+    method: "DELETE",
+  })
+}
