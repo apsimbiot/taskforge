@@ -19,7 +19,7 @@ import { TimeTracker } from "@/components/time-tracker"
 import { KanbanBoard } from "@/components/kanban-board"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { useTaskPanel } from "@/store/useTaskPanel"
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses } from "@/hooks/useQueries"
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
 
@@ -27,7 +27,7 @@ import type { TaskResponse } from "@/lib/api"
 import { GroupByDropdown } from "@/components/list-view/group-by-dropdown"
 import { SortDropdown, PRIORITY_ORDER } from "@/components/list-view/sort-dropdown"
 import { FilterPopover, type FilterState } from "@/components/list-view/filter-popover"
-import { TaskTableRow } from "@/components/list-view/task-table-row"
+import { TaskTableRowWrapper } from "@/components/list-view/task-table-row-wrapper"
 import { BulkActionsBar } from "@/components/list-view/bulk-actions-bar"
 
 type ViewMode = "list" | "board" | "gantt"
@@ -143,6 +143,9 @@ export default function ListPage({
   const createTaskMutation = useCreateTask()
   const updateTaskMutation = useUpdateTask()
   const deleteTaskMutation = useDeleteTask()
+  const { data: workspaceMembers } = useWorkspaceMembers(workspaceId)
+  const addTaskAssigneeMutation = useAddTaskAssignee()
+  const removeTaskAssigneeMutation = useRemoveTaskAssignee()
 
   // View mode state
   const [viewMode, setViewMode] = useState<ViewMode>("list")
@@ -290,6 +293,34 @@ export default function ListPage({
       updateTaskMutation.mutate({ taskId, status })
     },
     [updateTaskMutation]
+  )
+
+  const handlePriorityChange = useCallback(
+    (taskId: string, priority: string) => {
+      updateTaskMutation.mutate({ taskId, priority })
+    },
+    [updateTaskMutation]
+  )
+
+  const handleDueDateChange = useCallback(
+    (taskId: string, date: string | null) => {
+      updateTaskMutation.mutate({ taskId, dueDate: date || undefined })
+    },
+    [updateTaskMutation]
+  )
+
+  const handleAssigneeAdd = useCallback(
+    (taskId: string, userId: string) => {
+      addTaskAssigneeMutation.mutate({ taskId, userId })
+    },
+    [addTaskAssigneeMutation]
+  )
+
+  const handleAssigneeRemove = useCallback(
+    (taskId: string, userId: string) => {
+      removeTaskAssigneeMutation.mutate({ taskId, userId })
+    },
+    [removeTaskAssigneeMutation]
   )
 
   const handleBulkStatusChange = useCallback(
@@ -598,31 +629,91 @@ export default function ListPage({
                       {!collapsedGroups.has(groupKey) && (
                         <div>
                           {groupedTasks[groupKey].map((task) => (
-                            <TaskTableRow
+                            <TaskTableRowWrapper
                               key={task.id}
                               task={task}
                               isSelected={selectedTasks.has(task.id)}
                               onSelect={handleTaskSelect}
                               onStatusChange={handleStatusChange}
                               onClick={(taskId) => setSelectedTask(taskId)}
+                              workspaceId={workspaceId}
+                              workspaceMembers={workspaceMembers || []}
+                              onPriorityChange={handlePriorityChange}
+                              onDueDateChange={handleDueDateChange}
+                              onAssigneeAdd={handleAssigneeAdd}
+                              onAssigneeRemove={handleAssigneeRemove}
                             />
                           ))}
+                          {/* Inline new task row */}
+                          <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/20">
+                            <Plus className="h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="+ New task..."
+                              className="border-0 bg-transparent focus-visible:ring-0 text-sm h-7"
+                              value={groupBy === "status" ? newTaskTitle : ""}
+                              onChange={(e) => {
+                                if (groupBy === "status") {
+                                  setNewTaskTitle(e.target.value)
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newTaskTitle.trim()) {
+                                  createTaskMutation.mutate({
+                                    listId,
+                                    title: newTaskTitle.trim(),
+                                    status: groupKey,
+                                  })
+                                  setNewTaskTitle("")
+                                }
+                              }}
+                            />
+                          </div>
                         </div>
                       )}
                     </div>
                   ))
                 ) : (
                   // Flat view
-                  processedTasks.map((task) => (
-                    <TaskTableRow
-                      key={task.id}
-                      task={task}
-                      isSelected={selectedTasks.has(task.id)}
-                      onSelect={handleTaskSelect}
-                      onStatusChange={handleStatusChange}
-                      onClick={(taskId) => setSelectedTask(taskId)}
-                    />
-                  ))
+                  (
+                    <>
+                      {processedTasks.map((task) => (
+                        <TaskTableRowWrapper
+                          key={task.id}
+                          task={task}
+                          isSelected={selectedTasks.has(task.id)}
+                          onSelect={handleTaskSelect}
+                          onStatusChange={handleStatusChange}
+                          onClick={(taskId) => setSelectedTask(taskId)}
+                          workspaceId={workspaceId}
+                          workspaceMembers={workspaceMembers || []}
+                          onPriorityChange={handlePriorityChange}
+                          onDueDateChange={handleDueDateChange}
+                          onAssigneeAdd={handleAssigneeAdd}
+                          onAssigneeRemove={handleAssigneeRemove}
+                        />
+                      ))}
+                      {/* Inline new task row for flat view */}
+                      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/20">
+                        <Plus className="h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="+ New task..."
+                          className="border-0 bg-transparent focus-visible:ring-0 text-sm h-7"
+                          value={newTaskTitle}
+                          onChange={(e) => setNewTaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && newTaskTitle.trim()) {
+                              createTaskMutation.mutate({
+                                listId,
+                                title: newTaskTitle.trim(),
+                                status: "todo",
+                              })
+                              setNewTaskTitle("")
+                            }
+                          }}
+                        />
+                      </div>
+                    </>
+                  )
                 )}
               </div>
             ) : tasks && tasks.length > 0 ? (
