@@ -225,14 +225,14 @@ export default function DocsPage() {
                 <div className="grid gap-2">
                   <Label>Parent Document (optional)</Label>
                   <Select
-                    value={parentId || ""}
-                    onValueChange={(value) => setParentId(value || undefined)}
+                    value={parentId || "__none__"}
+                    onValueChange={(value) => setParentId(value === "__none__" ? undefined : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="None (root document)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None (root document)</SelectItem>
+                      <SelectItem value="__none__">None (root document)</SelectItem>
                       {documents.map((doc) => (
                         <SelectItem key={doc.id} value={doc.id}>
                           {doc.title}

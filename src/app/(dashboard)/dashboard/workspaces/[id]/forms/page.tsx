@@ -270,8 +270,6 @@ export default function FormsPage() {
                         }
                       />
                       Required
-                      />
-                      Required
                     </label>
                     <Button
                       variant="ghost"

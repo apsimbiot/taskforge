@@ -8,6 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface FormField {
   id: string
@@ -170,22 +177,24 @@ export default function PublicFormPage() {
                     rows={3}
                   />
                 ) : field.type === "select" ? (
-                  <select
-                    id={field.id}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    value={values[field.id] || ""}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.id]: e.target.value })
+                  <Select
+                    value={values[field.id] || undefined}
+                    onValueChange={(value) =>
+                      setValues({ ...values, [field.id]: value })
                     }
                     required={field.required}
                   >
-                    <option value="">Select...</option>
-                    {field.options?.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     id={field.id}

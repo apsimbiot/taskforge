@@ -17,9 +17,11 @@ export interface KanbanColumnProps {
   tasks: TaskResponse[]
   onTaskClick: (taskId: string) => void
   onQuickAdd?: () => void
+  onTaskDelete?: (taskId: string) => void
+  onTaskAssign?: (taskId: string) => void
 }
 
-export function KanbanColumn({ status, tasks, onTaskClick, onQuickAdd }: KanbanColumnProps) {
+export function KanbanColumn({ status, tasks, onTaskClick, onQuickAdd, onTaskDelete, onTaskAssign }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status.id,
   })
@@ -55,6 +57,8 @@ export function KanbanColumn({ status, tasks, onTaskClick, onQuickAdd }: KanbanC
               key={task.id}
               task={task}
               onClick={() => onTaskClick(task.id)}
+              onDelete={onTaskDelete}
+              onAssign={onTaskAssign}
             />
           ))}
         </SortableContext>

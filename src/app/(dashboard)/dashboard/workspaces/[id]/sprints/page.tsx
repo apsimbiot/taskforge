@@ -5,7 +5,7 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 import { 
   Plus, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   Play,
   CheckCircle2,
   Clock
@@ -26,6 +26,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import { useSprints, useCreateSprint } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import { format, differenceInDays } from "date-fns"
@@ -35,8 +37,8 @@ import { format, differenceInDays } from "date-fns"
 function CreateSprintDialog({ workspaceId }: { workspaceId: string }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined)
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [goal, setGoal] = useState("")
   
   const createSprintMutation = useCreateSprint()
@@ -48,15 +50,15 @@ function CreateSprintDialog({ workspaceId }: { workspaceId: string }) {
     createSprintMutation.mutate({
       workspaceId,
       name,
-      startDate,
-      endDate,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
       goal: goal || undefined,
     }, {
       onSuccess: () => {
         setOpen(false)
         setName("")
-        setStartDate("")
-        setEndDate("")
+        setStartDate(undefined)
+        setEndDate(undefined)
         setGoal("")
       }
     })
@@ -92,23 +94,53 @@ function CreateSprintDialog({ workspaceId }: { workspaceId: string }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
-                <Input 
-                  id="startDate" 
-                  type="date" 
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "PPP") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={(date) => setStartDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="endDate">End Date</Label>
-                <Input 
-                  id="endDate" 
-                  type="date" 
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !endDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Select date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={(date) => setEndDate(date)}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
             <div className="space-y-2">
@@ -173,7 +205,7 @@ function SprintCard({ sprint, workspaceId }: { sprint: { id: string; name: strin
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-            <Calendar className="h-3.5 w-3.5" />
+            <CalendarIcon className="h-3.5 w-3.5" />
             <span>{format(startDate, "MMM d")} - {format(endDate, "MMM d, yyyy")}</span>
           </div>
           

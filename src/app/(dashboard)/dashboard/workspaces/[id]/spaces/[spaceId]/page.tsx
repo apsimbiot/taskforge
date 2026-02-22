@@ -86,9 +86,16 @@ export default function SpacePage({
             </div>
           ) : (
             <Card>
-              <CardContent className="p-8 text-center">
-                <FolderClosed className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">No folders yet</p>
+              <CardContent className="p-12 text-center">
+                <FolderClosed className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No folders yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Create your first folder to organize your lists.
+                </p>
+                <Button onClick={() => setShowCreateFolder(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create your first folder
+                </Button>
               </CardContent>
             </Card>
           )}

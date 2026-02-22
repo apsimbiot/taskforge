@@ -9,11 +9,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { useTaskPanel } from "@/store/useTaskPanel"
 
 const shortcuts = [
   { category: "Global", items: [
     { keys: ["⌘", "K"], description: "Open search" },
     { keys: ["?"], description: "Show keyboard shortcuts" },
+    { keys: ["Esc"], description: "Close panel / dialog" },
   ]},
   { category: "Tasks", items: [
     { keys: ["N"], description: "New task (in list view)" },
@@ -28,27 +30,68 @@ const shortcuts = [
 
 export function KeyboardShortcuts() {
   const [open, setOpen] = React.useState(false)
+  const taskPanel = useTaskPanel()
 
   React.useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       // Don't trigger when typing in inputs
       const target = e.target as HTMLElement
-      if (
+      const isInput =
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable
-      ) {
+
+      // Escape — close any open panel/dialog (always works, even in inputs)
+      if (e.key === "Escape") {
+        // Close shortcuts dialog first
+        if (open) {
+          e.preventDefault()
+          setOpen(false)
+          return
+        }
+        // Close task detail panel
+        if (taskPanel.isOpen) {
+          e.preventDefault()
+          taskPanel.close()
+          return
+        }
         return
       }
 
+      // Skip remaining shortcuts when in an input
+      if (isInput) return
+
+      // ? — toggle keyboard shortcuts dialog
       if (e.key === "?") {
         e.preventDefault()
         setOpen((prev) => !prev)
+        return
+      }
+
+      // N — focus the "new task" input in the current list view
+      if (e.key === "n" || e.key === "N") {
+        e.preventDefault()
+        // Look for the quick-add input in the kanban or list view
+        const addBtn = document.querySelector<HTMLButtonElement>(
+          '[data-new-task-trigger]'
+        )
+        if (addBtn) {
+          addBtn.click()
+          return
+        }
+        // Fallback: look for any "Add task" button in the current view
+        const addBtns = document.querySelectorAll("button")
+        for (const btn of addBtns) {
+          if (btn.textContent?.trim().toLowerCase().includes("add task")) {
+            btn.click()
+            return
+          }
+        }
       }
     }
     document.addEventListener("keydown", handler)
     return () => document.removeEventListener("keydown", handler)
-  }, [])
+  }, [open, taskPanel])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -1,7 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { fetchWorkspaces, updateWorkspace, type WorkspaceResponse } from "@/lib/api"
 
 export { fetchWorkspaces }
+
+export function useWorkspaces() {
+  return useQuery<WorkspaceResponse[]>({
+    queryKey: ["workspaces"],
+    queryFn: fetchWorkspaces,
+  })
+}
 
 // ── User Hooks ─────────────────────────────────────────────────────────────
 

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { format, subDays, startOfDay, endOfDay } from "date-fns"
 import {
   BarChart3,
-  Calendar,
+  Calendar as CalendarIcon,
   Download,
   Clock,
 } from "lucide-react"
@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { cn } from "@/lib/utils"
 
 interface TimeReportEntry {
   userId: string
@@ -35,20 +38,22 @@ export default function ReportsPage() {
   const params = useParams()
   const workspaceId = params.id as string
 
-  const [startDate, setStartDate] = useState(
-    format(subDays(new Date(), 30), "yyyy-MM-dd")
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    subDays(new Date(), 30)
   )
-  const [endDate, setEndDate] = useState(format(new Date(), "yyyy-MM-dd"))
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date())
 
   const { data, isLoading } = useQuery<TimeReportResponse>({
-    queryKey: ["time-reports", workspaceId, startDate, endDate],
+    queryKey: ["time-reports", workspaceId, startDate?.toISOString(), endDate?.toISOString()],
     queryFn: async () => {
+      const start = startDate ? format(startDate, "yyyy-MM-dd") : ""
+      const end = endDate ? format(endDate, "yyyy-MM-dd") : ""
       const res = await fetch(
-        `/api/workspaces/${workspaceId}/reports/time?startDate=${startDate}&endDate=${endDate}`
+        `/api/workspaces/${workspaceId}/reports/time?startDate=${start}&endDate=${end}`
       )
       return res.json()
     },
-    enabled: !!workspaceId,
+    enabled: !!workspaceId && !!startDate && !!endDate,
   })
 
   const entries = data?.byUser || []
@@ -67,7 +72,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `time-report-${startDate}-to-${endDate}.csv`
+    a.download = `time-report-${startDate ? format(startDate, "yyyy-MM-dd") : "start"}-to-${endDate ? format(endDate, "yyyy-MM-dd") : "end"}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -109,29 +114,61 @@ export default function ReportsPage() {
           <div className="flex items-end gap-4">
             <div className="grid gap-1.5">
               <Label className="text-xs">Start Date</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-40"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-40 justify-start text-left font-normal",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => setStartDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid gap-1.5">
               <Label className="text-xs">End Date</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-40"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className={cn(
+                      "w-40 justify-start text-left font-normal",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={(date) => setEndDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setStartDate(format(subDays(new Date(), 7), "yyyy-MM-dd"))
-                  setEndDate(format(new Date(), "yyyy-MM-dd"))
+                  setStartDate(subDays(new Date(), 7))
+                  setEndDate(new Date())
                 }}
               >
                 Last 7 days
@@ -140,8 +177,8 @@ export default function ReportsPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setStartDate(format(subDays(new Date(), 30), "yyyy-MM-dd"))
-                  setEndDate(format(new Date(), "yyyy-MM-dd"))
+                  setStartDate(subDays(new Date(), 30))
+                  setEndDate(new Date())
                 }}
               >
                 Last 30 days

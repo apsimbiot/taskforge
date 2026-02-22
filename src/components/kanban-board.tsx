@@ -21,8 +21,9 @@ import { useQueryClient } from "@tanstack/react-query"
 import { TaskCardOverlay } from "@/components/task-card"
 import { KanbanColumn } from "@/components/kanban-column"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
-import { useUpdateTask } from "@/hooks/useQueries"
+import { useUpdateTask, useDeleteTask } from "@/hooks/useQueries"
 import { useTaskPanel } from "@/store/useTaskPanel"
+import { toast } from "sonner"
 import type { TaskResponse, StatusResponse } from "@/lib/api"
 
 export interface KanbanBoardProps {
@@ -48,7 +49,25 @@ function normalizeStatusName(name: string): string {
 export function KanbanBoard({ tasks, statuses, listId }: KanbanBoardProps) {
   const queryClient = useQueryClient()
   const updateTaskMutation = useUpdateTask()
+  const deleteTaskMutation = useDeleteTask()
   const { selectedTaskId, setSelectedTask, isOpen, close } = useTaskPanel()
+
+  const handleTaskDelete = (taskId: string) => {
+    deleteTaskMutation.mutate(taskId, {
+      onSuccess: () => {
+        toast.success("Task deleted")
+        queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+      },
+      onError: () => {
+        toast.error("Failed to delete task")
+      },
+    })
+  }
+
+  const handleTaskAssign = (taskId: string) => {
+    // Open the task detail panel for assignment
+    setSelectedTask(taskId)
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -205,6 +224,8 @@ export function KanbanBoard({ tasks, statuses, listId }: KanbanBoardProps) {
                 status={status}
                 tasks={columnTasks}
                 onTaskClick={(taskId) => setSelectedTask(taskId)}
+                onTaskDelete={handleTaskDelete}
+                onTaskAssign={handleTaskAssign}
               />
             )
           })}

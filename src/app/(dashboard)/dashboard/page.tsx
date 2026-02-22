@@ -16,7 +16,10 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useWorkspaces, useDashboardStats } from "@/hooks/useQueries"
+import { Button } from "@/components/ui/button"
+import { useWorkspaces, useDashboardStats, useCreateWorkspace } from "@/hooks/useQueries"
+import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog"
+import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
 import {
@@ -277,7 +280,10 @@ export default function DashboardPage() {
   const router = useRouter()
   const { data: workspaces, isLoading: workspacesLoading } = useWorkspaces()
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
+  const [createWsOpen, setCreateWsOpen] = useState(false)
+  const createWorkspaceMutation = useCreateWorkspace()
 
+  // Auto-select first workspace once loaded
   useEffect(() => {
     if (workspaces && workspaces.length > 0 && !selectedWorkspaceId) {
       setSelectedWorkspaceId(workspaces[0].id)
@@ -424,7 +430,7 @@ export default function DashboardPage() {
               {statsLoading ? (
                 <div className="h-[200px] bg-muted rounded animate-pulse" />
               ) : (
-                <WorkloadChart data={(stats?.workloadPerAssignee ?? []).map(w => ({ name: w.name, tasks: w.total }))} />
+                <WorkloadChart data={(stats?.workloadPerAssignee ?? []).map(w => ({ name: w.name || "Unassigned", tasks: w.total }))} />
               )}
             </CardContent>
           </Card>
@@ -518,14 +524,36 @@ export default function DashboardPage() {
                 <h3 className="text-lg font-semibold mb-2">
                   No workspaces yet
                 </h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground mb-4">
                   Create your first workspace to get started.
                 </p>
+                <Button onClick={() => setCreateWsOpen(true)}>
+                  Create your first workspace
+                </Button>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      <CreateWorkspaceDialog
+        open={createWsOpen}
+        onOpenChange={setCreateWsOpen}
+        onSubmit={(data) => {
+          createWorkspaceMutation.mutate(
+            { name: data.name, slug: data.name.toLowerCase().replace(/\s+/g, "-") },
+            {
+              onSuccess: () => {
+                toast.success("Workspace created!")
+                setCreateWsOpen(false)
+              },
+              onError: () => {
+                toast.error("Failed to create workspace")
+              },
+            }
+          )
+        }}
+      />
     </div>
   )
 }
