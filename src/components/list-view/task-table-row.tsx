@@ -4,11 +4,15 @@ import * as React from "react"
 import { Checkbox } from "@/components/ui/checkbox"
 import { StatusBadge } from "@/components/status-badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
-import { Calendar, Tag, List, User, Clock } from "lucide-react"
+import { Calendar as CalendarIcon, Plus } from "lucide-react"
 
-interface TaskTableRowProps {
+export interface TaskTableRowProps {
   task: TaskResponse
   isSelected: boolean
   onSelect: (taskId: string, selected: boolean) => void
@@ -17,6 +21,13 @@ interface TaskTableRowProps {
   assignees?: { userId: string; user: { name: string; avatarUrl?: string } }[]
   listName?: string
   tags?: { id: string; name: string; color: string }[]
+  workspaceId?: string
+  workspaceMembers?: { id: string; name: string | null; email: string; avatarUrl: string | null }[]
+  taskAssignees?: { userId: string; user: { id: string; name: string | null; email: string; avatarUrl: string | null } }[]
+  onPriorityChange?: (taskId: string, priority: string) => void
+  onDueDateChange?: (taskId: string, date: string | undefined) => void
+  onAssigneeAdd?: (taskId: string, userId: string) => void
+  onAssigneeRemove?: (taskId: string, userId: string) => void
 }
 
 const STATUS_ORDER = ["todo", "in_progress", "review", "done"]
@@ -45,9 +56,17 @@ export function TaskTableRow({
   assignees = [],
   listName,
   tags = [],
+  workspaceId,
+  workspaceMembers = [],
+  taskAssignees = [],
+  onPriorityChange,
+  onDueDateChange,
+  onAssigneeAdd,
+  onAssigneeRemove,
 }: TaskTableRowProps) {
   const status = task.status || "todo"
   const priority = task.priority || "none"
+  const [assigneeSearch, setAssigneeSearch] = React.useState("")
 
   const cycleStatus = () => {
     const currentIndex = STATUS_ORDER.indexOf(status)
@@ -56,12 +75,32 @@ export function TaskTableRow({
   }
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return "-"
+    if (!dateStr) return null
     const date = new Date(dateStr)
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date()
+
+  // Filter workspace members based on search
+  const filteredMembers = workspaceMembers.filter(
+    (member) =>
+      member.name?.toLowerCase().includes(assigneeSearch.toLowerCase()) ||
+      member.email.toLowerCase().includes(assigneeSearch.toLowerCase())
+  )
+
+  // Check if a member is assigned to this task
+  const isMemberAssigned = (memberId: string) =>
+    taskAssignees.some((a) => a.userId === memberId)
+
+  // Handle date change
+  const handleDateSelect = (date: Date | undefined) => {
+    if (onDueDateChange) {
+      onDueDateChange(task.id, date ? date.toISOString() : undefined)
+    }
+  }
+
+  const dueDate = task.dueDate ? new Date(task.dueDate) : undefined
 
   return (
     <div
@@ -112,30 +151,95 @@ export function TaskTableRow({
 
       {/* Priority */}
       <div className="w-24 flex-shrink-0">
-        {priority !== "none" && (
-          <StatusBadge
-            variant="priority"
-            priority={priority as "low" | "medium" | "high" | "urgent"}
-          />
+        {onPriorityChange ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="w-full flex items-center justify-start cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5">
+                {priority !== "none" && (
+                  <StatusBadge
+                    variant="priority"
+                    priority={priority as "low" | "medium" | "high" | "urgent"}
+                  />
+                )}
+                {priority === "none" && (
+                  <span className="text-xs text-muted-foreground">Set</span>
+                )}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => onPriorityChange(task.id, "urgent")}>
+                🔴 Urgent
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPriorityChange(task.id, "high")}>
+                🟠 High
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPriorityChange(task.id, "medium")}>
+                🔵 Medium
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPriorityChange(task.id, "low")}>
+                ⚪ Low
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPriorityChange(task.id, "none")}>
+                None
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          priority !== "none" && (
+            <StatusBadge
+              variant="priority"
+              priority={priority as "low" | "medium" | "high" | "urgent"}
+            />
+          )
         )}
       </div>
 
       {/* Due Date */}
-      <div
-        className={cn(
-          "w-24 flex-shrink-0 text-xs flex items-center gap-1",
-          isOverdue && "text-red-500 font-medium"
-        )}
-      >
-        {task.dueDate ? (
-          <>
-            <Calendar className="h-3 w-3" />
-            {formatDate(task.dueDate)}
-          </>
-        ) : (
-          <span className="text-muted-foreground">-</span>
-        )}
-      </div>
+      {onDueDateChange ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                "w-24 flex-shrink-0 text-xs flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5",
+                isOverdue && "text-red-500 font-medium"
+              )}
+            >
+              {task.dueDate ? (
+                <>
+                  <CalendarIcon className="h-3 w-3" />
+                  {formatDate(task.dueDate)}
+                </>
+              ) : (
+                <span className="text-muted-foreground">Set date</span>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={dueDate}
+              onSelect={handleDateSelect}
+              initialFocus
+            />
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <div
+          className={cn(
+            "w-24 flex-shrink-0 text-xs flex items-center gap-1",
+            isOverdue && "text-red-500 font-medium"
+          )}
+        >
+          {task.dueDate ? (
+            <>
+              <CalendarIcon className="h-3 w-3" />
+              {formatDate(task.dueDate)}
+            </>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
+        </div>
+      )}
 
       {/* Assignee */}
       <div className="w-24 flex-shrink-0 flex items-center gap-1">

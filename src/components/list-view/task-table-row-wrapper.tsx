@@ -13,7 +13,7 @@ interface TaskTableRowWrapperProps {
   workspaceId?: string
   workspaceMembers?: { id: string; name: string | null; email: string; avatarUrl: string | null }[]
   onPriorityChange?: (taskId: string, priority: string) => void
-  onDueDateChange?: (taskId: string, date: string | null) => void
+  onDueDateChange?: (taskId: string, date: string | undefined) => void
   onAssigneeAdd?: (taskId: string, userId: string) => void
   onAssigneeRemove?: (taskId: string, userId: string) => void
 }

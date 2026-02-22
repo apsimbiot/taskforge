@@ -303,8 +303,8 @@ export default function ListPage({
   )
 
   const handleDueDateChange = useCallback(
-    (taskId: string, date: string | null) => {
-      updateTaskMutation.mutate({ taskId, dueDate: date || undefined })
+    (taskId: string, date: string | undefined) => {
+      updateTaskMutation.mutate({ taskId, dueDate: date })
     },
     [updateTaskMutation]
   )
