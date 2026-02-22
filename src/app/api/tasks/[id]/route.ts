@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, lists, spaces, workspaceMembers, taskActivities } from "@/db/schema";
+import { tasks, lists, spaces, workspaceMembers, taskActivities, taskAssignees } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { runAutomations } from "@/lib/automations";
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
@@ -216,6 +217,21 @@ export async function PATCH(
           oldValue,
           newValue,
         });
+      }
+    }
+
+    // Trigger automations for status change
+    if (validatedData.status && validatedData.status !== oldTask.status) {
+      try {
+        await runAutomations("status_change", {
+          taskId,
+          workspaceId: oldTask.list.space.workspaceId,
+          userId: session.user.id,
+          oldStatus: oldTask.status ?? undefined,
+          newStatus: validatedData.status,
+        });
+      } catch (err) {
+        console.error("Error running status_change automations:", err);
       }
     }
 

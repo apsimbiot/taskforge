@@ -5,7 +5,7 @@ export default defineConfig({
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL || 'postgresql://taskforge:taskforge@localhost:5432/taskforge',
+    url: 'postgresql://taskforge:taskforge@localhost:5432/taskforge',
   },
   verbose: true,
   strict: true,

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { tasks, lists, spaces, workspaceMembers, taskActivities } from "@/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { z } from "zod";
+import { runAutomations } from "@/lib/automations";
 
 const createTaskSchema = z.object({
   title: z.string().min(1).max(500),
@@ -148,6 +149,17 @@ export async function POST(
       userId: session.user.id,
       action: "created",
     });
+
+    // Trigger automations
+    try {
+      await runAutomations("task_created", {
+        taskId: task.id,
+        workspaceId: list.space.workspaceId,
+        userId: session.user.id,
+      });
+    } catch (err) {
+      console.error("Error running automations:", err);
+    }
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

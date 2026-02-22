@@ -574,6 +574,122 @@ export const notificationsRelations = relations(notifications, ({ one }) => ({
   }),
 }));
 
+// ─── Automations ───────────────────────────────────────────────────────────────
+export const automations = pgTable(
+  "automations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    triggerType: varchar("trigger_type", { length: 50 }).notNull(),
+    triggerConfig: jsonb("trigger_config").default({}),
+    actionType: varchar("action_type", { length: 50 }).notNull(),
+    actionConfig: jsonb("action_config").default({}),
+    enabled: boolean("enabled").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [index("automations_workspace_idx").on(t.workspaceId)]
+);
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    spaceId: uuid("space_id").references(() => spaces.id, {
+      onDelete: "cascade",
+    }),
+    title: varchar("title", { length: 255 }).notNull(),
+    content: jsonb("content").default({}),
+    icon: varchar("icon", { length: 50 }).default("file-text"),
+    coverUrl: text("cover_url"),
+    parentDocumentId: uuid("parent_document_id"),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("documents_workspace_idx").on(t.workspaceId),
+    index("documents_space_idx").on(t.spaceId),
+    index("documents_parent_idx").on(t.parentDocumentId),
+  ]
+);
+
+// ─── Forms ────────────────────────────────────────────────────────────────────
+export const forms = pgTable(
+  "forms",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    listId: uuid("list_id").references(() => lists.id, {
+      onDelete: "cascade",
+    }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    fields: jsonb("fields").default([]),
+    isPublic: boolean("is_public").default(false),
+    slug: varchar("slug", { length: 255 }).notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("forms_workspace_idx").on(t.workspaceId),
+    index("forms_list_idx").on(t.listId),
+  ]
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RELATIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const automationsRelations = relations(automations, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [automations.workspaceId],
+    references: [workspaces.id],
+  }),
+}));
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [documents.workspaceId],
+    references: [workspaces.id],
+  }),
+  space: one(spaces, {
+    fields: [documents.spaceId],
+    references: [spaces.id],
+  }),
+  parent: one(documents, {
+    fields: [documents.parentDocumentId],
+    references: [documents.id],
+    relationName: "children",
+  }),
+  children: many(documents, { relationName: "children" }),
+  creator: one(users, {
+    fields: [documents.creatorId],
+    references: [users.id],
+  }),
+}));
+
+export const formsRelations = relations(forms, ({ one }) => ({
+  workspace: one(workspaces, {
+    fields: [forms.workspaceId],
+    references: [workspaces.id],
+  }),
+  list: one(lists, {
+    fields: [forms.listId],
+    references: [lists.id],
+  }),
+}));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -610,3 +726,9 @@ export type View = typeof views.$inferSelect;
 export type NewView = typeof views.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
+export type Automation = typeof automations.$inferSelect;
+export type NewAutomation = typeof automations.$inferInsert;
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+export type Form = typeof forms.$inferSelect;
+export type NewForm = typeof forms.$inferInsert;
