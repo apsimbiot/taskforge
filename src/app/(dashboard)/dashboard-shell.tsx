@@ -2,6 +2,7 @@
 
 import { Sidebar } from "@/components/sidebar"
 import { Notifications } from "@/components/notifications"
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "sonner"
 import { useSSE } from "@/hooks/useSSE"
@@ -22,6 +23,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      <KeyboardShortcuts />
       <Toaster position="bottom-right" richColors closeButton />
     </TooltipProvider>
   )

@@ -14,6 +14,11 @@ import {
   FolderClosed,
   ListTodo,
   Zap,
+  FileText,
+  Users,
+  BarChart3,
+  ClipboardList,
+  Bot,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -36,6 +41,7 @@ import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog"
 import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { CreateFolderDialog } from "@/components/create-folder-dialog"
 import { CreateListDialog } from "@/components/create-list-dialog"
+import { SearchCommand } from "@/components/search-command"
 import { useSidebarStore } from "@/store"
 import { useWorkspaces, useSpaces, useFolders, useFolderLists, useCreateWorkspace, useCreateSpace, useCreateFolder, useCreateList } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
@@ -304,19 +310,91 @@ export function Sidebar() {
           </Tooltip>
 
           {selectedWorkspaceId && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
-                >
-                  <Zap className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Sprints</TooltipContent>
-            </Tooltip>
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
+                  >
+                    <Zap className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Sprints</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/docs`)}
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Docs</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/automations`)}
+                  >
+                    <Bot className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Automations</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/workload`)}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Workload</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/reports`)}
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Reports</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/forms`)}
+                  >
+                    <ClipboardList className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Forms</TooltipContent>
+              </Tooltip>
+            </>
           )}
 
           <Tooltip>
@@ -365,31 +443,73 @@ export function Sidebar() {
 
         {/* Quick actions */}
         <div className="flex flex-col gap-0.5 px-3 py-2">
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="flex-1 justify-start gap-2 h-8"
-              onClick={() => router.push("/dashboard")}
-            >
-              <Home className="h-4 w-4" />
-              <span className="text-sm">Home</span>
-            </Button>
-            <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2 h-8">
-              <Search className="h-4 w-4" />
-              <span className="text-sm">Search</span>
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 h-8"
+            onClick={() => router.push("/dashboard")}
+          >
+            <Home className="h-4 w-4" />
+            <span className="text-sm">Home</span>
+          </Button>
+          <SearchCommand />
           {selectedWorkspaceId && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 h-8"
-              onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
-            >
-              <Zap className="h-4 w-4" />
-              <span className="text-sm">Sprints</span>
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/sprints`)}
+              >
+                <Zap className="h-4 w-4" />
+                <span className="text-sm">Sprints</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/docs`)}
+              >
+                <FileText className="h-4 w-4" />
+                <span className="text-sm">Docs</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/automations`)}
+              >
+                <Bot className="h-4 w-4" />
+                <span className="text-sm">Automations</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/workload`)}
+              >
+                <Users className="h-4 w-4" />
+                <span className="text-sm">Workload</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/reports`)}
+              >
+                <BarChart3 className="h-4 w-4" />
+                <span className="text-sm">Reports</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/forms`)}
+              >
+                <ClipboardList className="h-4 w-4" />
+                <span className="text-sm">Forms</span>
+              </Button>
+            </>
           )}
         </div>
 

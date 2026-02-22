@@ -2,16 +2,16 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { 
-  CommandDialog, 
-  CommandInput, 
-  CommandList, 
-  CommandEmpty, 
-  CommandGroup, 
+import { Search, FileText, CheckSquare, Loader2 } from "lucide-react"
+import {
+  CommandDialog,
+  CommandInput,
+  CommandList,
+  CommandEmpty,
+  CommandGroup,
   CommandItem,
-  CommandSeparator 
+  CommandSeparator,
 } from "@/components/ui/command"
-import { Search, FileText, CheckSquare } from "lucide-react"
 
 interface SearchResult {
   id: string
@@ -27,7 +27,7 @@ export function SearchCommand() {
   const [loading, setLoading] = React.useState(false)
   const router = useRouter()
 
-  // Keyboard shortcut
+  // Keyboard shortcut: Cmd+K / Ctrl+K
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
@@ -50,11 +50,12 @@ export function SearchCommand() {
       setLoading(true)
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
-        const data = await res.json()
-        setResults(data.results || [])
+        if (res.ok) {
+          const data = await res.json()
+          setResults(data.results || [])
+        }
       } catch (err) {
         console.error("Search error:", err)
-        setResults([])
       } finally {
         setLoading(false)
       }
@@ -63,10 +64,14 @@ export function SearchCommand() {
     return () => clearTimeout(timer)
   }, [query])
 
-  const handleSelect = (result: SearchResult) => {
+  const handleSelect = (url: string) => {
     setOpen(false)
-    router.push(result.url)
+    setQuery("")
+    router.push(url)
   }
+
+  const taskResults = results.filter((r) => r.type === "task")
+  const docResults = results.filter((r) => r.type === "doc")
 
   return (
     <>
@@ -76,61 +81,66 @@ export function SearchCommand() {
       >
         <Search className="h-4 w-4" />
         <span className="flex-1 text-left">Search...</span>
-        <kbd className="text-xs bg-muted px-1.5 py-0.5 rounded">⌘K</kbd>
+        <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+          <span className="text-xs">⌘</span>K
+        </kbd>
       </button>
 
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandInput 
-          placeholder="Search tasks and docs..." 
+        <CommandInput
+          placeholder="Search tasks and docs..."
           value={query}
           onValueChange={setQuery}
         />
         <CommandList>
           {loading && (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              Searching...
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
+              <span className="text-sm text-muted-foreground">Searching...</span>
             </div>
           )}
-          
+
           {!loading && query && results.length === 0 && (
             <CommandEmpty>No results found.</CommandEmpty>
           )}
 
-          {results.length > 0 && (
-            <>
-              <CommandGroup heading="Tasks">
-                {results
-                  .filter((r) => r.type === "task")
-                  .map((result) => (
-                    <CommandItem
-                      key={result.id}
-                      onSelect={() => handleSelect(result)}
-                    >
-                      <CheckSquare className="mr-2 h-4 w-4" />
-                      <span>{result.title}</span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-              <CommandSeparator />
-              <CommandGroup heading="Docs">
-                {results
-                  .filter((r) => r.type === "doc")
-                  .map((result) => (
-                    <CommandItem
-                      key={result.id}
-                      onSelect={() => handleSelect(result)}
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      <span>{result.title}</span>
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-            </>
+          {taskResults.length > 0 && (
+            <CommandGroup heading="Tasks">
+              {taskResults.map((result) => (
+                <CommandItem
+                  key={result.id}
+                  value={result.title}
+                  onSelect={() => handleSelect(result.url)}
+                >
+                  <CheckSquare className="mr-2 h-4 w-4" />
+                  <span>{result.title}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
           )}
 
-          {!query && (
+          {taskResults.length > 0 && docResults.length > 0 && (
+            <CommandSeparator />
+          )}
+
+          {docResults.length > 0 && (
+            <CommandGroup heading="Docs">
+              {docResults.map((result) => (
+                <CommandItem
+                  key={result.id}
+                  value={result.title}
+                  onSelect={() => handleSelect(result.url)}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  <span>{result.title}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+
+          {!query && !loading && (
             <div className="py-6 text-center text-sm text-muted-foreground">
-              Start typing to search...
+              Type to search tasks and docs...
             </div>
           )}
         </CommandList>

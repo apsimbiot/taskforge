@@ -72,7 +72,9 @@ export default function FormsPage() {
     mutationFn: async (data: {
       name: string
       description: string
-      fields: FormField[]
+      fields: (FormField & { name: string; options: string[] })[]
+      slug: string
+      isPublic: boolean
     }) => {
       const res = await fetch(`/api/workspaces/${workspaceId}/forms`, {
         method: "POST",
@@ -98,10 +100,20 @@ export default function FormsPage() {
   const forms = data?.forms || []
 
   const handleCreate = () => {
+    const slug = formName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") + "-" + Date.now().toString(36)
     createMutation.mutate({
       name: formName,
       description: formDescription,
-      fields,
+      fields: fields.map((f) => ({
+        ...f,
+        name: f.label.toLowerCase().replace(/[^a-z0-9]+/g, "_"),
+        options: f.options || [],
+      })),
+      slug,
+      isPublic: true,
     })
     setCreateOpen(false)
     setFormName("")

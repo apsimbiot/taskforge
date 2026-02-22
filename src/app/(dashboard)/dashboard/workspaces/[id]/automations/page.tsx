@@ -261,11 +261,14 @@ export default function AutomationsPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                   <span>{getActionLabel(automation.actionType)}</span>
-                  {automation.triggerConfig?.value && (
-                    <Badge variant="outline" className="ml-auto text-xs">
-                      {String(automation.triggerConfig.value)}
-                    </Badge>
-                  )}
+                  {(() => {
+                    const cfg = automation.triggerConfig as Record<string, string> | null
+                    return cfg?.value ? (
+                      <Badge variant="outline" className="ml-auto text-xs">
+                        {cfg.value}
+                      </Badge>
+                    ) : null
+                  })()}
                 </div>
                 <Button
                   variant="ghost"

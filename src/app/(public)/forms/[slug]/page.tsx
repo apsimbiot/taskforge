@@ -63,10 +63,26 @@ export default function PublicFormPage() {
 
     setSubmitting(true)
     try {
+      // Map field IDs to field labels/names for the API
+      const submissionData: Record<string, string> = {}
+      ;(form?.fields || []).forEach((field) => {
+        const val = values[field.id]
+        if (val) {
+          const name = field.label.toLowerCase().replace(/[^a-z0-9]+/g, "_")
+          submissionData[name] = val
+          // Also include label-keyed for description building
+          submissionData[field.label] = val
+        }
+      })
+      // Include title explicitly
+      const titleField = form?.fields.find((f) => f.label.toLowerCase() === "title")
+      if (titleField) {
+        submissionData.title = values[titleField.id] || ""
+      }
       const res = await fetch(`/api/forms/${slug}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ values }),
+        body: JSON.stringify(submissionData),
       })
       if (!res.ok) throw new Error("Submission failed")
       setSubmitted(true)
