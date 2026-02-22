@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/db"
 import { customFieldDefinitions } from "@/db/schema"
-import { eq } from "drizzle-orm"
+import { eq, and } from "drizzle-orm"
 
 export async function PUT(
   request: Request,
@@ -12,42 +12,41 @@ export async function PUT(
     const body = await request.json()
     const { name, type, options, order } = body
 
-    // Verify field exists
-    const existingField = await db
-      .select()
-      .from(customFieldDefinitions)
-      .where(eq(customFieldDefinitions.id, fieldId))
-      .limit(1)
-
-    if (!existingField.length) {
-      return NextResponse.json({ error: "Field not found" }, { status: 404 })
+    const validTypes = [
+      "text", "textarea", "number", "date", "time", "datetime",
+      "checkbox", "select", "multiSelect", "url", "email", 
+      "phone", "currency", "percentage", "user"
+    ]
+    if (type && !validTypes.includes(type)) {
+      return NextResponse.json(
+        { error: `Invalid field type. Valid types: ${validTypes.join(", ")}` },
+        { status: 400 }
+      )
     }
 
-    // Validate field type if provided
-    if (type) {
-      const validTypes = [
-        "text", "textarea", "number", "date", "time", "datetime",
-        "checkbox", "select", "multiSelect", "url", "email", "phone",
-        "currency", "percentage", "user"
-      ]
+    const updateData: Partial<typeof customFieldDefinitions.$inferInsert> = {}
+    if (name !== undefined) updateData.name = name
+    if (type !== undefined) updateData.type = type
+    if (options !== undefined) updateData.options = options
+    if (order !== undefined) updateData.order = order
 
-      if (!validTypes.includes(type)) {
-        return NextResponse.json({ error: "Invalid field type" }, { status: 400 })
-      }
-    }
-
-    const [field] = await db
+    const [updatedField] = await db
       .update(customFieldDefinitions)
-      .set({
-        ...(name && { name }),
-        ...(type && { type }),
-        ...(options !== undefined && { options }),
-        ...(order !== undefined && { order }),
-      })
-      .where(eq(customFieldDefinitions.id, fieldId))
+      .set(updateData)
+      .where(and(
+        eq(customFieldDefinitions.id, fieldId),
+        eq(customFieldDefinitions.listId, listId)
+      ))
       .returning()
 
-    return NextResponse.json({ field })
+    if (!updatedField) {
+      return NextResponse.json(
+        { error: "Custom field not found" },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({ field: updatedField })
   } catch (error) {
     console.error("Error updating custom field:", error)
     return NextResponse.json(
@@ -64,20 +63,20 @@ export async function DELETE(
   try {
     const { id: listId, fieldId } = await params
 
-    // Verify field exists
-    const existingField = await db
-      .select()
-      .from(customFieldDefinitions)
-      .where(eq(customFieldDefinitions.id, fieldId))
-      .limit(1)
-
-    if (!existingField.length) {
-      return NextResponse.json({ error: "Field not found" }, { status: 404 })
-    }
-
-    await db
+    const [deletedField] = await db
       .delete(customFieldDefinitions)
-      .where(eq(customFieldDefinitions.id, fieldId))
+      .where(and(
+        eq(customFieldDefinitions.id, fieldId),
+        eq(customFieldDefinitions.listId, listId)
+      ))
+      .returning()
+
+    if (!deletedField) {
+      return NextResponse.json(
+        { error: "Custom field not found" },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

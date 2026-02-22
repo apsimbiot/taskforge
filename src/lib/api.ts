@@ -524,10 +524,46 @@ export interface CustomFieldDefinitionResponse {
   id: string
   listId: string
   name: string
-  type: string
+  type: CustomFieldType
   options: Record<string, unknown>
-  order: number
+  order: number | null
+  createdAt?: string
 }
+
+export type CustomFieldType = 
+  | "text" 
+  | "textarea" 
+  | "number" 
+  | "date" 
+  | "time" 
+  | "datetime" 
+  | "checkbox" 
+  | "select" 
+  | "multiSelect" 
+  | "url" 
+  | "email" 
+  | "phone" 
+  | "currency" 
+  | "percentage" 
+  | "user"
+
+export const CUSTOM_FIELD_TYPES: { value: CustomFieldType; label: string; description: string }[] = [
+  { value: "text", label: "Text", description: "Single line text" },
+  { value: "textarea", label: "Text Area", description: "Multi-line text" },
+  { value: "number", label: "Number", description: "Numeric value" },
+  { value: "date", label: "Date", description: "Date picker" },
+  { value: "time", label: "Time", description: "Time picker" },
+  { value: "datetime", label: "Date & Time", description: "Both date and time" },
+  { value: "checkbox", label: "Checkbox", description: "Yes/No toggle" },
+  { value: "select", label: "Select", description: "Dropdown with options" },
+  { value: "multiSelect", label: "Multi-Select", description: "Multiple selections" },
+  { value: "url", label: "URL", description: "Web address" },
+  { value: "email", label: "Email", description: "Email address" },
+  { value: "phone", label: "Phone", description: "Phone number" },
+  { value: "currency", label: "Currency", description: "Money amount" },
+  { value: "percentage", label: "Percentage", description: "Percentage value" },
+  { value: "user", label: "User", description: "Assign to workspace member" },
+]
 
 export async function fetchCustomFields(listId: string): Promise<CustomFieldDefinitionResponse[]> {
   const data = await fetchJSON<{ fields: CustomFieldDefinitionResponse[] }>(`/lists/${listId}/custom-fields`)

@@ -32,6 +32,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { MarkdownEditor } from "./markdown-editor"
 import { MarkdownRenderer } from "./markdown-renderer"
 import {
@@ -47,7 +56,11 @@ import {
   useComments,
   useCreateComment,
   useWorkspaceMembers,
+  useCustomFields,
+  useCreateCustomField,
+  useDeleteCustomField,
 } from "@/hooks/useQueries"
+import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { extractTextFromTiptap } from "@/lib/tiptap"
 import type { TaskResponse, StatusResponse, WorkspaceMemberResponse, SubtaskResponse, CommentResponse } from "@/lib/api"
