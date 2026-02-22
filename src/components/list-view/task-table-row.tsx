@@ -13,6 +13,7 @@ interface TaskTableRowProps {
   isSelected: boolean
   onSelect: (taskId: string, selected: boolean) => void
   onStatusChange: (taskId: string, status: string) => void
+  onClick?: (taskId: string) => void
   assignees?: { userId: string; user: { name: string; avatarUrl?: string } }[]
   listName?: string
   tags?: { id: string; name: string; color: string }[]
@@ -40,6 +41,7 @@ export function TaskTableRow({
   isSelected,
   onSelect,
   onStatusChange,
+  onClick,
   assignees = [],
   listName,
   tags = [],
@@ -92,14 +94,15 @@ export function TaskTableRow({
 
       {/* Name */}
       <div className="flex-1 min-w-[200px]">
-        <span
+        <button
+          onClick={() => onClick?.(task.id)}
           className={cn(
-            "text-sm truncate block",
+            "text-sm truncate block text-left hover:text-primary hover:underline transition-colors cursor-pointer",
             status === "done" && "line-through text-muted-foreground"
           )}
         >
           {task.title}
-        </span>
+        </button>
       </div>
 
       {/* Status badge */}

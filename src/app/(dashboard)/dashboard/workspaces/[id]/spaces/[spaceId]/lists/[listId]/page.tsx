@@ -17,6 +17,8 @@ import { Breadcrumb } from "@/components/breadcrumb"
 import { StatusBadge } from "@/components/status-badge"
 import { TimeTracker } from "@/components/time-tracker"
 import { KanbanBoard } from "@/components/kanban-board"
+import { TaskDetailPanel } from "@/components/task-detail-panel"
+import { useTaskPanel } from "@/store/useTaskPanel"
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
@@ -162,6 +164,7 @@ export default function ListPage({
   })
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const { selectedTaskId, setSelectedTask, isOpen: isTaskPanelOpen, close: closeTaskPanel } = useTaskPanel()
 
   // Available filter options (from API or defaults)
   const availableStatuses = statuses && statuses.length > 0
@@ -601,6 +604,7 @@ export default function ListPage({
                               isSelected={selectedTasks.has(task.id)}
                               onSelect={handleTaskSelect}
                               onStatusChange={handleStatusChange}
+                              onClick={(taskId) => setSelectedTask(taskId)}
                             />
                           ))}
                         </div>
@@ -616,6 +620,7 @@ export default function ListPage({
                       isSelected={selectedTasks.has(task.id)}
                       onSelect={handleTaskSelect}
                       onStatusChange={handleStatusChange}
+                      onClick={(taskId) => setSelectedTask(taskId)}
                     />
                   ))
                 )}
@@ -702,6 +707,15 @@ export default function ListPage({
         availablePriorities={availablePriorities}
         availableAssignees={[]}
         availableLabels={[]}
+      />
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        task={selectedTaskId ? tasks?.find((t) => t.id === selectedTaskId) : null}
+        open={isTaskPanelOpen}
+        onClose={closeTaskPanel}
+        statuses={statuses || []}
+        workspaceId={workspaceId}
       />
     </div>
   )
