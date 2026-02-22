@@ -114,7 +114,35 @@ export async function GET(
             label: true,
           },
         },
-        timeEntries: true,
+        timeEntries: {
+          with: {
+            user: {
+              columns: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        subtasks: {
+          with: {
+            assignees: {
+              with: {
+                user: {
+                  columns: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    avatarUrl: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: (subtasks, { asc }) => [asc(subtasks.order)],
+        },
       },
     });
 

@@ -130,6 +130,8 @@ export const tasks = pgTable(
     order: integer("order").default(0),
     customFields: jsonb("custom_fields").default({}),
     parentTaskId: uuid("parent_task_id"),
+    blockedBy: jsonb("blocked_by").default([]),
+    blocks: jsonb("blocks").default([]),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
