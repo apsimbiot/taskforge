@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { tasks, lists, spaces, workspaceMembers, taskAssignees, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { createNotification } from "@/lib/notifications";
 
 const addAssigneeSchema = z.object({
   userId: z.string().uuid(),
@@ -130,7 +131,7 @@ export async function POST(
       .returning();
 
     // Fetch the user details
-    const user = await db.query.users.findFirst({
+    const assignedUser = await db.query.users.findFirst({
       where: eq(users.id, validatedData.userId),
       columns: {
         id: true,
@@ -140,7 +141,17 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ assignee: { ...assignee, user } }, { status: 201 });
+    // Notify the assigned user
+    await createNotification({
+      userId: validatedData.userId,
+      type: "task_assigned",
+      title: `You were assigned to "${access.task.title}"`,
+      message: `You have been assigned to a new task`,
+      entityType: "task",
+      entityId: taskId,
+    });
+
+    return NextResponse.json({ assignee: { ...assignee, user: assignedUser } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

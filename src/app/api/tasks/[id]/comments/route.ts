@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, lists, spaces, workspaceMembers, taskComments } from "@/db/schema";
+import { tasks, lists, spaces, workspaceMembers, taskComments, taskAssignees } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
+import { createNotification, notifyMentions } from "@/lib/notifications";
 
 const createCommentSchema = z.object({
   content: z.string().min(1),
@@ -120,6 +121,42 @@ export async function POST(
         },
       },
     });
+
+    // Notify task assignees about the new comment (except the commenter)
+    const taskAssigneesList = await db.query.taskAssignees.findMany({
+      where: eq(taskAssignees.taskId, taskId),
+    });
+
+    for (const assignee of taskAssigneesList) {
+      if (assignee.userId !== session.user.id) {
+        await createNotification({
+          userId: assignee.userId,
+          type: "comment_added",
+          title: `New comment on "${access.task.title}"`,
+          message: `${commentWithUser?.user?.name || "Someone"} commented on a task you're assigned to`,
+          entityType: "task",
+          entityId: taskId,
+        });
+      }
+    }
+
+    // Also notify the task creator if they're not the commenter and not already notified
+    if (access.task.creatorId !== session.user.id) {
+      const alreadyNotified = taskAssigneesList.some(a => a.userId === access.task.creatorId);
+      if (!alreadyNotified) {
+        await createNotification({
+          userId: access.task.creatorId,
+          type: "comment_added",
+          title: `New comment on "${access.task.title}"`,
+          message: `${commentWithUser?.user?.name || "Someone"} commented on your task`,
+          entityType: "task",
+          entityId: taskId,
+        });
+      }
+    }
+
+    // Handle @mentions
+    await notifyMentions(validatedData.content, session.user.id, "task", taskId);
 
     return NextResponse.json({ comment: commentWithUser }, { status: 201 });
   } catch (error) {

@@ -336,6 +336,29 @@ export const views = pgTable(
   ]
 );
 
+// ─── Notifications ─────────────────────────────────────────────────────────────
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 50 }).notNull(),
+    title: varchar("title", { length: 255 }).notNull(),
+    message: text("message"),
+    read: boolean("read").default(false),
+    entityType: varchar("entity_type", { length: 50 }),
+    entityId: uuid("entity_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("notifications_user_idx").on(t.userId),
+    index("notifications_read_idx").on(t.read),
+    index("notifications_created_idx").on(t.createdAt),
+  ]
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RELATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -348,6 +371,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   taskComments: many(taskComments),
   taskActivities: many(taskActivities),
   timeEntries: many(timeEntries),
+  notifications: many(notifications),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
@@ -543,6 +567,13 @@ export const viewsRelations = relations(views, ({ one }) => ({
   }),
 }));
 
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPE EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -577,3 +608,5 @@ export type Sprint = typeof sprints.$inferSelect;
 export type NewSprint = typeof sprints.$inferInsert;
 export type View = typeof views.$inferSelect;
 export type NewView = typeof views.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
