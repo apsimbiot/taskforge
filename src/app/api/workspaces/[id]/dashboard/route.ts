@@ -65,10 +65,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Calculate stats
     const totalTasks = workspaceTasks.length;
-    const completedTasks = workspaceTasks.filter((t) => t.status === "completed").length;
+    const completedTasks = workspaceTasks.filter((t) => t.status === "done" || t.status === "completed").length;
     const inProgressTasks = workspaceTasks.filter((t) => t.status === "in_progress").length;
     const overdueTasks = workspaceTasks.filter(
-      (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "completed"
+      (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "done" && t.status !== "completed"
     );
 
     // Tasks by status
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       todo: workspaceTasks.filter((t) => t.status === "todo").length,
       in_progress: workspaceTasks.filter((t) => t.status === "in_progress").length,
       in_review: workspaceTasks.filter((t) => t.status === "in_review").length,
-      completed: workspaceTasks.filter((t) => t.status === "completed").length,
+      done: workspaceTasks.filter((t) => t.status === "done" || t.status === "completed").length,
     };
 
     // Tasks by priority
@@ -101,8 +101,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .where(
           and(
             inArray(tasks.listId, listIds),
-            eq(tasks.status, "completed"),
-            sql`${tasks.updatedAt} >= ${thirtyDaysAgo}`
+            sql`${tasks.status} IN ('done', 'completed')`,
+            sql`${tasks.updatedAt} >= ${thirtyDaysAgo.toISOString()}`
           )
         )
         .orderBy(desc(tasks.updatedAt));
@@ -144,7 +144,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           .where(
             and(
               inArray(tasks.id, sprintTaskIds),
-              eq(tasks.status, "completed")
+              sql`${tasks.status} IN ('done', 'completed')`
             )
           );
 
@@ -190,7 +190,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           name: assignee.user.name,
           avatarUrl: assignee.user.avatarUrl,
           total: userTasks.length,
-          completed: userTasks.filter((t) => t.status === "completed").length,
+          completed: userTasks.filter((t) => t.status === "done" || t.status === "completed").length,
         });
       }
     }
