@@ -6,6 +6,7 @@ import { CSS } from "@dnd-kit/utilities"
 import { Calendar, Clock } from "lucide-react"
 import { StatusBadge } from "@/components/status-badge"
 import { cn } from "@/lib/utils"
+import { extractTextFromTiptap } from "@/lib/tiptap"
 import type { TaskResponse } from "@/lib/api"
 
 export interface TaskCardProps {
@@ -42,12 +43,8 @@ export function TaskCard({ task, onClick, className }: TaskCardProps) {
     return { text: dueDate.toLocaleDateString(), color: "text-muted-foreground" }
   }
 
-  // Get description from JSON if it's an object
-  const description = task.description 
-    ? typeof task.description === 'string' 
-      ? task.description 
-      : (task.description as Record<string, unknown>).content as string || ''
-    : ''
+  // Get description from Tiptap JSON
+  const description = extractTextFromTiptap(task.description)
 
   return (
     <div
@@ -116,11 +113,7 @@ export function TaskCardOverlay({ task }: { task: TaskResponse }) {
     return { text: dueDate.toLocaleDateString(), color: "text-muted-foreground" }
   }
 
-  const description = task.description 
-    ? typeof task.description === 'string' 
-      ? task.description 
-      : (task.description as Record<string, unknown>).content as string || ''
-    : ''
+  const description = extractTextFromTiptap(task.description)
 
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-xl cursor-grabbing w-[288px]">

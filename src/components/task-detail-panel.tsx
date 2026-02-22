@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useUpdateTask } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
+import { extractTextFromTiptap } from "@/lib/tiptap"
 import type { TaskResponse, StatusResponse } from "@/lib/api"
 
 interface TaskDetailPanelProps {
@@ -64,15 +65,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
   useEffect(() => {
     if (task) {
       setTitle(task.title)
-      setDescription(
-        task.description
-          ? typeof task.description === "string"
-            ? task.description
-            : (task.description as Record<string, unknown>).content
-              ? JSON.stringify((task.description as Record<string, unknown>).content)
-              : ""
-          : ""
-      )
+      setDescription(extractTextFromTiptap(task.description))
       setStatus(task.status || "todo")
       setPriority((task.priority as Priority) || "none")
       setDueDate(task.dueDate ? task.dueDate.split("T")[0] : "")
