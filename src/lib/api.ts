@@ -211,6 +211,43 @@ export async function fetchStatuses(listId: string): Promise<StatusResponse[]> {
   return data.statuses
 }
 
+export async function createStatus(
+  listId: string,
+  data: { name: string; color?: string; order?: number }
+): Promise<{ status: StatusResponse }> {
+  return fetchJSON(`/lists/${listId}/statuses`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateStatus(
+  listId: string,
+  statusId: string,
+  data: { name?: string; color?: string; order?: number }
+): Promise<{ status: StatusResponse }> {
+  return fetchJSON(`/lists/${listId}/statuses/${statusId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteStatus(listId: string, statusId: string): Promise<void> {
+  return fetchJSON(`/lists/${listId}/statuses/${statusId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function reorderStatuses(
+  listId: string,
+  statusIds: string[]
+): Promise<{ statuses: StatusResponse[] }> {
+  return fetchJSON(`/lists/${listId}/statuses/reorder`, {
+    method: "PUT",
+    body: JSON.stringify({ statusIds }),
+  })
+}
+
 // ── Sprints ─────────────────────────────────────────────────────────────────
 export interface SprintResponse {
   id: string
@@ -323,4 +360,161 @@ export interface DashboardStats {
 
 export async function fetchDashboardStats(workspaceId: string): Promise<DashboardStats> {
   return fetchJSON<DashboardStats>(`/workspaces/${workspaceId}/dashboard`)
+}
+
+// ── Workspace Members ─────────────────────────────────────────────────────
+export interface WorkspaceMemberResponse {
+  id: string
+  name: string | null
+  email: string
+  avatarUrl: string | null
+  role: string
+}
+
+export async function fetchWorkspaceMembers(
+  workspaceId: string,
+  query?: string
+): Promise<WorkspaceMemberResponse[]> {
+  const url = query ? `/workspaces/${workspaceId}/members?q=${encodeURIComponent(query)}` : `/workspaces/${workspaceId}/members`
+  const data = await fetchJSON<{ members: WorkspaceMemberResponse[] }>(url)
+  return data.members
+}
+
+// ── Task Assignees ────────────────────────────────────────────────────────
+export interface TaskAssigneeResponse {
+  id: string
+  taskId: string
+  userId: string
+  user: {
+    id: string
+    name: string | null
+    email: string
+    avatarUrl: string | null
+  }
+}
+
+export async function fetchTaskAssignees(taskId: string): Promise<TaskAssigneeResponse[]> {
+  const data = await fetchJSON<{ assignees: TaskAssigneeResponse[] }>(`/tasks/${taskId}/assignees`)
+  return data.assignees
+}
+
+export async function addTaskAssignee(
+  taskId: string,
+  userId: string
+): Promise<{ assignee: TaskAssigneeResponse }> {
+  return fetchJSON(`/tasks/${taskId}/assignees`, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  })
+}
+
+export async function removeTaskAssignee(taskId: string, userId: string): Promise<void> {
+  await fetchJSON(`/tasks/${taskId}/assignees?userId=${userId}`, {
+    method: "DELETE",
+  })
+}
+
+// ── Subtasks ────────────────────────────────────────────────────────────────
+export interface SubtaskResponse {
+  id: string
+  listId: string
+  title: string
+  description: Record<string, unknown> | null
+  status: string | null
+  priority: string | null
+  creatorId: string
+  dueDate: string | null
+  timeEstimate: number | null
+  timeSpent: number | null
+  order: number | null
+  parentTaskId: string | null
+  createdAt: string
+  updatedAt: string
+  assignees: TaskAssigneeResponse[]
+  creator: {
+    id: string
+    name: string | null
+    email: string
+    avatarUrl: string | null
+  }
+}
+
+export async function fetchSubtasks(taskId: string): Promise<SubtaskResponse[]> {
+  const data = await fetchJSON<{ subtasks: SubtaskResponse[] }>(`/tasks/${taskId}/subtasks`)
+  return data.subtasks
+}
+
+export async function createSubtask(
+  taskId: string,
+  data: { title: string; description?: Record<string, unknown>; status?: string; priority?: string; dueDate?: string; timeEstimate?: number }
+): Promise<{ subtask: SubtaskResponse }> {
+  return fetchJSON(`/tasks/${taskId}/subtasks`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function toggleSubtask(
+  taskId: string,
+  subtaskId: string,
+  completed: boolean
+): Promise<{ task: TaskResponse }> {
+  return fetchJSON(`/tasks/${subtaskId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: completed ? "done" : "todo" }),
+  })
+}
+
+export async function deleteSubtask(taskId: string, subtaskId: string): Promise<void> {
+  await fetchJSON(`/tasks/${taskId}/subtasks?subtaskId=${subtaskId}`, {
+    method: "DELETE",
+  })
+}
+
+// ── Comments ───────────────────────────────────────────────────────────────
+export interface CommentResponse {
+  id: string
+  taskId: string
+  userId: string
+  content: string
+  createdAt: string
+  updatedAt: string | null
+  user: {
+    id: string
+    name: string | null
+    email: string
+    avatarUrl: string | null
+  }
+}
+
+export async function fetchComments(taskId: string): Promise<CommentResponse[]> {
+  const data = await fetchJSON<{ comments: CommentResponse[] }>(`/tasks/${taskId}/comments`)
+  return data.comments
+}
+
+export async function createComment(
+  taskId: string,
+  content: string
+): Promise<{ comment: CommentResponse }> {
+  return fetchJSON(`/tasks/${taskId}/comments`, {
+    method: "POST",
+    body: JSON.stringify({ content }),
+  })
+}
+
+export async function deleteComment(taskId: string, commentId: string): Promise<void> {
+  await fetchJSON(`/tasks/${taskId}/comments?commentId=${commentId}`, {
+    method: "DELETE",
+  })
+}
+
+// ── Task Dependencies ───────────────────────────────────────────────────
+export interface TaskDependenciesResponse {
+  blockedBy: string[]
+  blocks: string[]
+}
+
+export async function fetchTaskDependencies(taskId: string): Promise<TaskDependenciesResponse> {
+  const data = await fetchJSON<{ blockedBy: string[]; blocks: string[] }>(`/tasks/${taskId}/dependencies`)
+  return data
 }

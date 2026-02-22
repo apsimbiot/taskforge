@@ -276,6 +276,7 @@ export default function ListPage({
                 tasks={tasks || []}
                 statuses={statuses}
                 listId={listId}
+                workspaceId={workspaceId}
               />
             ) : (
               <div className="p-12 text-center">

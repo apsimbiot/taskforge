@@ -14,6 +14,10 @@ import {
   updateTask,
   deleteTask,
   fetchStatuses,
+  createStatus,
+  updateStatus,
+  deleteStatus,
+  reorderStatuses,
   fetchSprints,
   fetchSprint,
   createSprint,
@@ -25,6 +29,18 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   fetchDashboardStats,
+  fetchWorkspaceMembers,
+  fetchTaskAssignees,
+  addTaskAssignee,
+  removeTaskAssignee,
+  fetchSubtasks,
+  createSubtask,
+  toggleSubtask,
+  deleteSubtask,
+  fetchComments,
+  createComment,
+  deleteComment,
+  fetchTaskDependencies,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
@@ -34,6 +50,10 @@ import {
   type SprintResponse,
   type SprintDetailResponse,
   type DashboardStats,
+  type WorkspaceMemberResponse,
+  type TaskAssigneeResponse,
+  type SubtaskResponse,
+  type CommentResponse,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -220,6 +240,67 @@ export function useStatuses(listId: string | undefined) {
   })
 }
 
+export function useCreateStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      listId,
+      ...data
+    }: {
+      listId: string
+      name: string
+      color?: string
+      order?: number
+    }) => createStatus(listId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statuses", variables.listId] })
+    },
+  })
+}
+
+export function useUpdateStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      listId,
+      statusId,
+      ...data
+    }: {
+      listId: string
+      statusId: string
+      name?: string
+      color?: string
+      order?: number
+    }) => updateStatus(listId, statusId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statuses", variables.listId] })
+    },
+  })
+}
+
+export function useDeleteStatus() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ listId, statusId }: { listId: string; statusId: string }) =>
+      deleteStatus(listId, statusId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statuses", variables.listId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks", variables.listId] })
+    },
+  })
+}
+
+export function useReorderStatuses() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ listId, statusIds }: { listId: string; statusIds: string[] }) =>
+      reorderStatuses(listId, statusIds),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statuses", variables.listId] })
+    },
+  })
+}
+
 // ── Sprint Hooks ──────────────────────────────────────────────────────────
 
 export function useSprints(workspaceId: string | undefined) {
@@ -349,5 +430,150 @@ export function useDashboardStats(workspaceId: string | undefined) {
     queryFn: () => fetchDashboardStats(workspaceId!),
     enabled: !!workspaceId,
     refetchInterval: 30000, // Refetch every 30s
+  })
+}
+
+// ── Workspace Members Hooks ────────────────────────────────────────────────
+
+export function useWorkspaceMembers(workspaceId: string | undefined) {
+  return useQuery<WorkspaceMemberResponse[]>({
+    queryKey: ["workspace-members", workspaceId],
+    queryFn: () => fetchWorkspaceMembers(workspaceId!),
+    enabled: !!workspaceId,
+  })
+}
+
+export function useSearchWorkspaceMembers(workspaceId: string | undefined, query: string) {
+  return useQuery<WorkspaceMemberResponse[]>({
+    queryKey: ["workspace-members", workspaceId, query],
+    queryFn: () => fetchWorkspaceMembers(workspaceId!, query),
+    enabled: !!workspaceId && query.length > 0,
+  })
+}
+
+// ── Task Assignees Hooks ─────────────────────────────────────────────────
+
+export function useTaskAssignees(taskId: string | undefined) {
+  return useQuery<TaskAssigneeResponse[]>({
+    queryKey: ["task-assignees", taskId],
+    queryFn: () => fetchTaskAssignees(taskId!),
+    enabled: !!taskId,
+  })
+}
+
+export function useAddTaskAssignee() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      addTaskAssignee(taskId, userId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-assignees", variables.taskId] })
+    },
+  })
+}
+
+export function useRemoveTaskAssignee() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, userId }: { taskId: string; userId: string }) =>
+      removeTaskAssignee(taskId, userId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-assignees", variables.taskId] })
+    },
+  })
+}
+
+// ── Subtasks Hooks ────────────────────────────────────────────────────────
+
+export function useSubtasks(taskId: string | undefined) {
+  return useQuery<SubtaskResponse[]>({
+    queryKey: ["subtasks", taskId],
+    queryFn: () => fetchSubtasks(taskId!),
+    enabled: !!taskId,
+  })
+}
+
+export function useCreateSubtask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      taskId,
+      ...data
+    }: {
+      taskId: string
+      title: string
+      description?: Record<string, unknown>
+      status?: string
+      priority?: string
+      dueDate?: string
+      timeEstimate?: number
+    }) => createSubtask(taskId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["subtasks", variables.taskId] })
+    },
+  })
+}
+
+export function useToggleSubtask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, subtaskId, completed }: { taskId: string; subtaskId: string; completed: boolean }) =>
+      toggleSubtask(taskId, subtaskId, completed),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["subtasks", variables.taskId] })
+    },
+  })
+}
+
+export function useDeleteSubtask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) =>
+      deleteSubtask(taskId, subtaskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["subtasks", variables.taskId] })
+    },
+  })
+}
+
+// ── Comments Hooks ─────────────────────────────────────────────────────────
+
+export function useComments(taskId: string | undefined) {
+  return useQuery<CommentResponse[]>({
+    queryKey: ["comments", taskId],
+    queryFn: () => fetchComments(taskId!),
+    enabled: !!taskId,
+  })
+}
+
+export function useCreateComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, content }: { taskId: string; content: string }) =>
+      createComment(taskId, content),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["comments", variables.taskId] })
+    },
+  })
+}
+
+export function useDeleteComment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, commentId }: { taskId: string; commentId: string }) =>
+      deleteComment(taskId, commentId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["comments", variables.taskId] })
+    },
+  })
+}
+
+// ── Task Dependencies Hooks ───────────────────────────────────────────────
+
+export function useTaskDependencies(taskId: string | undefined) {
+  return useQuery({
+    queryKey: ["task-dependencies", taskId],
+    queryFn: () => fetchTaskDependencies(taskId!),
+    enabled: !!taskId,
   })
 }
