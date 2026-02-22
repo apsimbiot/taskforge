@@ -177,6 +177,17 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
 
+  // Custom fields dialog
+  const [isCustomFieldDialogOpen, setIsCustomFieldDialogOpen] = useState(false)
+  const [newFieldName, setNewFieldName] = useState("")
+  const [newFieldType, setNewFieldType] = useState<CustomFieldType>("text")
+  const [newFieldOptions, setNewFieldOptions] = useState<string>("")
+
+  // Custom fields
+  const { data: customFields = [], isLoading: customFieldsLoading } = useCustomFields(task?.listId)
+  const createCustomFieldMutation = useCreateCustomField()
+  const deleteCustomFieldMutation = useDeleteCustomField()
+
   // Populate form when task changes
   useEffect(() => {
     if (task) {
@@ -717,11 +728,131 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* + Add Custom Field */}
-                <button className="flex items-center gap-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full">
-                  <Plus className="h-4 w-4" />
-                  Add Custom Field
-                </button>
+                {/* Custom Fields */}
+                <PropertyRow label="Custom Fields">
+                  <div className="flex-1 space-y-2">
+                    {customFieldsLoading ? (
+                      <Skeleton className="h-6 w-full" />
+                    ) : customFields.length > 0 ? (
+                      <div className="space-y-1">
+                        {customFields.map((field) => (
+                          <div key={field.id} className="flex items-center gap-2 text-sm">
+                            <span className="text-muted-foreground">{field.name}:</span>
+                            <span className="font-medium">
+                              {field.type === "checkbox" ? "☐" : 
+                               field.type === "select" || field.type === "multiSelect" ? 
+                                 ((field.options?.choices as string[] | undefined)?.length || 0) + " options" :
+                                 "-"}
+                            </span>
+                            <button
+                              onClick={() => {
+                                if (task) {
+                                  deleteCustomFieldMutation.mutate({
+                                    listId: task.listId,
+                                    fieldId: field.id,
+                                  })
+                                }
+                              }}
+                              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">No custom fields</span>
+                    )}
+                    
+                    {/* Add Custom Field Dialog */}
+                    <Dialog open={isCustomFieldDialogOpen} onOpenChange={setIsCustomFieldDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs">
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add Field
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Custom Field</DialogTitle>
+                          <DialogDescription>
+                            Create a new custom field for this list.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Field Name</label>
+                            <Input
+                              value={newFieldName}
+                              onChange={(e) => setNewFieldName(e.target.value)}
+                              placeholder="e.g., Priority, Budget, Team"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Field Type</label>
+                            <Select
+                              value={newFieldType}
+                              onValueChange={(value) => setNewFieldType(value as CustomFieldType)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {CUSTOM_FIELD_TYPES.map((type) => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    <div className="flex flex-col">
+                                      <span>{type.label}</span>
+                                      <span className="text-xs text-muted-foreground">{type.description}</span>
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {(newFieldType === "select" || newFieldType === "multiSelect") && (
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Options (one per line)</label>
+                              <textarea
+                                value={newFieldOptions}
+                                onChange={(e) => setNewFieldOptions(e.target.value)}
+                                placeholder="Option 1&#10;Option 2&#10;Option 3"
+                                className="w-full h-24 px-3 py-2 text-sm border rounded-md resize-none"
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsCustomFieldDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (task && newFieldName.trim()) {
+                                const options: Record<string, unknown> = {}
+                                if ((newFieldType === "select" || newFieldType === "multiSelect") && newFieldOptions.trim()) {
+                                  options.choices = newFieldOptions.split("\n").map(o => o.trim()).filter(Boolean)
+                                }
+                                createCustomFieldMutation.mutate({
+                                  listId: task.listId,
+                                  name: newFieldName.trim(),
+                                  type: newFieldType,
+                                  options,
+                                })
+                                setNewFieldName("")
+                                setNewFieldType("text")
+                                setNewFieldOptions("")
+                                setIsCustomFieldDialogOpen(false)
+                              }
+                            }}
+                            disabled={!newFieldName.trim()}
+                          >
+                            Add Field
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </PropertyRow>
               </div>
 
               <Separator />
