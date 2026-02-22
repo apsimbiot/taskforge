@@ -132,6 +132,44 @@ function FilterChips({
   )
 }
 
+// Inline new task row component
+function InlineNewTaskRow({
+  listId,
+  defaultStatus,
+  defaultPriority,
+  onCreateTask,
+}: {
+  listId: string
+  defaultStatus?: string
+  defaultPriority?: string
+  onCreateTask: (data: { listId: string; title: string; status?: string; priority?: string }) => void
+}) {
+  const [title, setTitle] = useState("")
+
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/20">
+      <Plus className="h-4 w-4 text-muted-foreground" />
+      <Input
+        placeholder="+ New task..."
+        className="border-0 bg-transparent focus-visible:ring-0 text-sm h-7"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && title.trim()) {
+            onCreateTask({
+              listId,
+              title: title.trim(),
+              status: defaultStatus,
+              priority: defaultPriority,
+            })
+            setTitle("")
+          }
+        }}
+      />
+    </div>
+  )
+}
+
 export default function ListPage({
   params,
 }: {
@@ -645,29 +683,12 @@ export default function ListPage({
                             />
                           ))}
                           {/* Inline new task row */}
-                          <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/20">
-                            <Plus className="h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="+ New task..."
-                              className="border-0 bg-transparent focus-visible:ring-0 text-sm h-7"
-                              value={groupBy === "status" ? newTaskTitle : ""}
-                              onChange={(e) => {
-                                if (groupBy === "status") {
-                                  setNewTaskTitle(e.target.value)
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && newTaskTitle.trim()) {
-                                  createTaskMutation.mutate({
-                                    listId,
-                                    title: newTaskTitle.trim(),
-                                    status: groupKey,
-                                  })
-                                  setNewTaskTitle("")
-                                }
-                              }}
-                            />
-                          </div>
+                          <InlineNewTaskRow
+                            listId={listId}
+                            defaultStatus={groupBy === "status" ? groupKey : "todo"}
+                            defaultPriority={groupBy === "priority" ? groupKey : undefined}
+                            onCreateTask={createTaskMutation.mutate}
+                          />
                         </div>
                       )}
                     </div>
@@ -693,25 +714,11 @@ export default function ListPage({
                         />
                       ))}
                       {/* Inline new task row for flat view */}
-                      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/20">
-                        <Plus className="h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="+ New task..."
-                          className="border-0 bg-transparent focus-visible:ring-0 text-sm h-7"
-                          value={newTaskTitle}
-                          onChange={(e) => setNewTaskTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && newTaskTitle.trim()) {
-                              createTaskMutation.mutate({
-                                listId,
-                                title: newTaskTitle.trim(),
-                                status: "todo",
-                              })
-                              setNewTaskTitle("")
-                            }
-                          }}
-                        />
-                      </div>
+                      <InlineNewTaskRow
+                        listId={listId}
+                        defaultStatus="todo"
+                        onCreateTask={createTaskMutation.mutate}
+                      />
                     </>
                   )
                 )}

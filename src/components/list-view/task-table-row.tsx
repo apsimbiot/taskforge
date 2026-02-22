@@ -242,27 +242,99 @@ export function TaskTableRow({
       )}
 
       {/* Assignee */}
-      <div className="w-24 flex-shrink-0 flex items-center gap-1">
-        {assignees.length > 0 ? (
-          <div className="flex -space-x-2">
-            {assignees.slice(0, 3).map((a) => (
-              <Avatar key={a.userId} className="h-6 w-6 border-2 border-background">
-                <AvatarImage src={a.user.avatarUrl} />
-                <AvatarFallback className="text-xs">
-                  {a.user.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            ))}
-            {assignees.length > 3 && (
-              <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
-                +{assignees.length - 3}
-              </div>
-            )}
-          </div>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        )}
-      </div>
+      {onAssigneeAdd && onAssigneeRemove ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="w-24 flex-shrink-0 flex items-center gap-1 cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5">
+              {assignees.length > 0 ? (
+                <div className="flex -space-x-2">
+                  {assignees.slice(0, 3).map((a) => (
+                    <Avatar key={a.userId} className="h-6 w-6 border-2 border-background">
+                      <AvatarImage src={a.user.avatarUrl} />
+                      <AvatarFallback className="text-xs">
+                        {a.user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {assignees.length > 3 && (
+                    <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+                      +{assignees.length - 3}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder="Search members..."
+                value={assigneeSearch}
+                onValueChange={setAssigneeSearch}
+              />
+              <CommandList>
+                <CommandEmpty>No members found.</CommandEmpty>
+                <CommandGroup>
+                  {filteredMembers.map((member) => {
+                    const isAssigned = isMemberAssigned(member.id)
+                    return (
+                      <CommandItem
+                        key={member.id}
+                        value={member.name || member.email}
+                        onSelect={() => {
+                          if (isAssigned) {
+                            onAssigneeRemove(task.id, member.id)
+                          } else {
+                            onAssigneeAdd(task.id, member.id)
+                          }
+                        }}
+                        className="flex items-center gap-2"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={member.avatarUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {member.name?.charAt(0).toUpperCase() || member.email.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate">
+                          {member.name || member.email}
+                        </span>
+                        {isAssigned && (
+                          <span className="text-green-500">✓</span>
+                        )}
+                      </CommandItem>
+                    )
+                  })}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      ) : (
+        <div className="w-24 flex-shrink-0 flex items-center gap-1">
+          {assignees.length > 0 ? (
+            <div className="flex -space-x-2">
+              {assignees.slice(0, 3).map((a) => (
+                <Avatar key={a.userId} className="h-6 w-6 border-2 border-background">
+                  <AvatarImage src={a.user.avatarUrl} />
+                  <AvatarFallback className="text-xs">
+                    {a.user.name.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {assignees.length > 3 && (
+                <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center text-xs">
+                  +{assignees.length - 3}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          )}
+        </div>
+      )}
 
       {/* List */}
       <div className="w-24 flex-shrink-0 text-xs text-muted-foreground truncate" title={listName}>
