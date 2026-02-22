@@ -32,14 +32,10 @@ export function Notifications() {
       markReadMutation.mutate(notification.id)
     }
 
-    // Navigate if there's an entity
-    if (notification.entityType && notification.entityId) {
-      if (notification.entityType === "task") {
-        router.push(`/dashboard/tasks/${notification.entityId}`)
-      }
-      // Add other entity types as needed
-    }
-
+    // For now, just mark as read without navigation
+    // The task navigation would require additional data (workspaceId, spaceId, listId)
+    // that isn't provided in the notification
+    
     setIsOpen(false)
   }
 

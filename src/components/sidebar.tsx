@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
 import {
   ChevronLeft,
   ChevronRight,
@@ -19,6 +20,7 @@ import {
   BarChart3,
   ClipboardList,
   Bot,
+  LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -409,7 +411,12 @@ export function Sidebar() {
           <div className="mt-auto">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => router.push("/dashboard/settings")}
+                >
                   <Settings className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -565,9 +572,22 @@ export function Sidebar() {
         {/* Footer */}
         <Separator />
         <div className="flex items-center gap-2 px-3 py-2">
-          <Button variant="ghost" size="sm" className="flex-1 justify-start gap-2 h-8">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="flex-1 justify-start gap-2 h-8"
+            onClick={() => router.push("/dashboard/settings")}
+          >
             <Settings className="h-4 w-4" />
             <span className="text-sm">Settings</span>
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+          >
+            <LogOut className="h-4 w-4" />
           </Button>
         </div>
       </div>

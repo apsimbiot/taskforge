@@ -12,6 +12,7 @@ import {
   fetchTasks,
   createTask,
   updateTask,
+  deleteTask,
   fetchStatuses,
   fetchSprints,
   fetchSprint,
@@ -193,6 +194,16 @@ export function useUpdateTask() {
       timeEstimate?: number
       order?: number
     }) => updateTask(taskId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (taskId: string) => deleteTask(taskId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },

@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { DocumentResponse } from "@/lib/api/documents"
 
@@ -217,20 +224,22 @@ export default function DocsPage() {
               {documents && documents.length > 0 && (
                 <div className="grid gap-2">
                   <Label>Parent Document (optional)</Label>
-                  <select
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  <Select
                     value={parentId || ""}
-                    onChange={(e) =>
-                      setParentId(e.target.value || undefined)
-                    }
+                    onValueChange={(value) => setParentId(value || undefined)}
                   >
-                    <option value="">None (root document)</option>
-                    {documents.map((doc) => (
-                      <option key={doc.id} value={doc.id}>
-                        {doc.title}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue placeholder="None (root document)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None (root document)</SelectItem>
+                      {documents.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          {doc.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
             </div>

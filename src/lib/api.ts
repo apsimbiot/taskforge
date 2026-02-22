@@ -38,6 +38,16 @@ export async function createWorkspace(data: {
   })
 }
 
+export async function updateWorkspace(
+  workspaceId: string,
+  data: { name?: string; slug?: string; logoUrl?: string }
+): Promise<{ workspace: WorkspaceResponse }> {
+  return fetchJSON(`/workspaces/${workspaceId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  })
+}
+
 // ── Spaces ──────────────────────────────────────────────────────────────────
 export interface SpaceResponse {
   id: string
@@ -176,6 +186,12 @@ export async function updateTask(
   return fetchJSON(`/tasks/${taskId}`, {
     method: "PATCH",
     body: JSON.stringify(data),
+  })
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  return fetchJSON(`/tasks/${taskId}`, {
+    method: "DELETE",
   })
 }
 

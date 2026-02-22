@@ -25,6 +25,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface FormField {
   id: string
@@ -236,27 +244,32 @@ export default function FormsPage() {
                       }
                       className="flex-1"
                     />
-                    <select
-                      className="h-9 rounded-md border border-input bg-transparent px-2 py-1 text-sm"
+                    <Select
                       value={field.type}
-                      onChange={(e) =>
+                      onValueChange={(value) =>
                         updateField(field.id, {
-                          type: e.target.value as FormField["type"],
+                          type: value as FormField["type"],
                         })
                       }
                     >
-                      <option value="text">Text</option>
-                      <option value="textarea">Textarea</option>
-                      <option value="number">Number</option>
-                      <option value="select">Select</option>
-                    </select>
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="text">Text</SelectItem>
+                        <SelectItem value="textarea">Textarea</SelectItem>
+                        <SelectItem value="number">Number</SelectItem>
+                        <SelectItem value="select">Select</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <label className="flex items-center gap-1 text-xs text-muted-foreground whitespace-nowrap">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={field.required}
-                        onChange={(e) =>
-                          updateField(field.id, { required: e.target.checked })
+                        onCheckedChange={(checked) =>
+                          updateField(field.id, { required: checked === true })
                         }
+                      />
+                      Required
                       />
                       Required
                     </label>

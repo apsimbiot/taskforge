@@ -1,13 +1,34 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
-import { useUpdateTask } from "@/hooks/useQueries"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar as CalendarComponent } from "@/components/ui/calendar"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useUpdateTask, useDeleteTask } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import { extractTextFromTiptap } from "@/lib/tiptap"
 import type { TaskResponse, StatusResponse } from "@/lib/api"
@@ -40,13 +61,15 @@ function normalizeStatusName(name: string): string {
 
 export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPanelProps) {
   const updateTaskMutation = useUpdateTask()
+  const deleteTaskMutation = useDeleteTask()
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [status, setStatus] = useState("")
   const [priority, setPriority] = useState<Priority>("none")
-  const [dueDate, setDueDate] = useState("")
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [timeEstimate, setTimeEstimate] = useState<number | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Time tracking state
   const [isTimerRunning, setIsTimerRunning] = useState(false)
@@ -68,7 +91,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
       setDescription(extractTextFromTiptap(task.description))
       setStatus(task.status || "todo")
       setPriority((task.priority as Priority) || "none")
-      setDueDate(task.dueDate ? task.dueDate.split("T")[0] : "")
+      setDueDate(task.dueDate ? new Date(task.dueDate) : undefined)
       setTimeEstimate(task.timeEstimate)
       setTimerSeconds(task.timeSpent || 0)
       setIsTimerRunning(false)
@@ -90,10 +113,17 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
       description,
       status,
       priority,
-      dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+      dueDate: dueDate ? dueDate.toISOString() : undefined,
       timeEstimate: timeEstimate ?? undefined,
     })
   }, [task, title, description, status, priority, dueDate, timeEstimate, updateTaskMutation])
+
+  const handleDelete = useCallback(() => {
+    if (!task) return
+    deleteTaskMutation.mutate(task.id)
+    setIsDeleteDialogOpen(false)
+    onClose()
+  }, [task, deleteTaskMutation, onClose])
 
   // Timer controls
   const handleStartTimer = () => {
@@ -176,9 +206,35 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
             {currentStatus?.name || "No Status"}
           </span>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Task</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this task? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
@@ -198,34 +254,38 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Status
               </label>
-              <select
+              <Select
                 value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value)
+                onValueChange={(value) => {
+                  setStatus(value)
                   if (task) {
                     updateTaskMutation.mutate({
                       taskId: task.id,
-                      status: e.target.value,
+                      status: value,
                     })
                   }
                 }}
-                className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
               >
-                {statuses.map((s) => (
-                  <option key={s.id} value={normalizeStatusName(s.name)}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statuses.map((s) => (
+                    <SelectItem key={s.id} value={normalizeStatusName(s.name)}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex-1">
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 Priority
               </label>
-              <select
+              <Select
                 value={priority}
-                onChange={(e) => {
-                  const newPriority = e.target.value as Priority
+                onValueChange={(value) => {
+                  const newPriority = value as Priority
                   setPriority(newPriority)
                   if (task) {
                     updateTaskMutation.mutate({
@@ -234,14 +294,18 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
                     })
                   }
                 }}
-                className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm"
               >
-                {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -251,13 +315,36 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
               <Calendar className="h-3 w-3" />
               Due Date
             </label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              onBlur={handleSave}
-              className="w-full"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !dueDate && "text-muted-foreground"
+                  )}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {dueDate ? dueDate.toLocaleDateString() : "Select date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={(date) => {
+                    setDueDate(date)
+                    if (task && date) {
+                      updateTaskMutation.mutate({
+                        taskId: task.id,
+                        dueDate: date.toISOString(),
+                      })
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Time Estimate */}
@@ -283,12 +370,12 @@ export function TaskDetailPanel({ task, open, onClose, statuses }: TaskDetailPan
             <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
               Description
             </label>
-            <textarea
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={handleSave}
               placeholder="Add a description..."
-              className="w-full min-h-[120px] px-3 py-2 rounded-md border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full min-h-[120px] resize-none"
             />
           </div>
 
