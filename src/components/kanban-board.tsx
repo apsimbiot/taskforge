@@ -24,15 +24,6 @@ import { KanbanColumn } from "@/components/kanban-column"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu"
 import { useUpdateTask, useDeleteTask, useCreateTask, useCreateStatus, useUpdateStatus, useDeleteStatus, useReorderStatuses } from "@/hooks/useQueries"
 import { useTaskPanel } from "@/store/useTaskPanel"
 import { toast } from "sonner"

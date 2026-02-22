@@ -117,7 +117,7 @@ export function KanbanColumn({
         )}
         
         <Badge variant="secondary" className="ml-auto text-xs">
-          {status.name} ({tasks.length})
+          {tasks.length}
         </Badge>
 
         <DropdownMenu>
