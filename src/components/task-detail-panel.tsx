@@ -177,6 +177,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
   const [collapseEmpty, setCollapseEmpty] = useState(false)
+  const [customFieldsExpanded, setCustomFieldsExpanded] = useState(true)
 
   // Custom fields dialog
   const [isCustomFieldDialogOpen, setIsCustomFieldDialogOpen] = useState(false)
@@ -728,49 +729,88 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* Time Estimate is now combined with Track time row above */}
+                {/* Collapse empty fields toggle (spans both columns) */}
+                <button
+                  onClick={() => setCollapseEmpty(!collapseEmpty)}
+                  className="col-span-2 flex items-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", collapseEmpty && "-rotate-90")} />
+                  {collapseEmpty ? "Show empty fields" : "Collapse empty fields"}
+                </button>
+              </div>
 
-                {/* Custom Fields */}
-                <PropertyRow label="Custom Fields" icon={<Gauge className="h-4 w-4" />}>
-                  <div className="flex-1 space-y-2">
+              {/* Custom Fields — Full-width collapsible section */}
+              <div className="border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setCustomFieldsExpanded(!customFieldsExpanded)}
+                  className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/30 transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium">
+                    <Gauge className="h-4 w-4 text-muted-foreground" />
+                    Custom Fields
+                    {customFields.length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-5 ml-1">
+                        {customFields.length}
+                      </Badge>
+                    )}
+                  </span>
+                  <ChevronDown className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    !customFieldsExpanded && "-rotate-90"
+                  )} />
+                </button>
+
+                {customFieldsExpanded && (
+                  <div className="px-4 pb-4 space-y-3">
                     {customFieldsLoading ? (
-                      <Skeleton className="h-6 w-full" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-8 w-full" />
+                        <Skeleton className="h-8 w-full" />
+                      </div>
                     ) : customFields.length > 0 ? (
-                      <div className="space-y-1">
+                      <div className="grid grid-cols-2 gap-3">
                         {customFields.map((field) => (
-                          <div key={field.id} className="flex items-center gap-2 text-sm">
-                            <span className="text-muted-foreground">{field.name}:</span>
-                            <span className="font-medium">
-                              {field.type === "checkbox" ? "☐" : 
-                               field.type === "select" || field.type === "multiSelect" ? 
-                                 ((field.options?.choices as string[] | undefined)?.length || 0) + " options" :
-                                 "-"}
-                            </span>
-                            <button
-                              onClick={() => {
-                                if (task) {
-                                  deleteCustomFieldMutation.mutate({
-                                    listId: task.listId,
-                                    fieldId: field.id,
-                                  })
-                                }
-                              }}
-                              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                          <div
+                            key={field.id}
+                            className="flex items-center justify-between gap-2 p-2.5 rounded-md border border-border/50 bg-muted/20 group"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs text-muted-foreground">{field.type}</span>
+                              <span className="text-sm font-medium truncate">{field.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-muted-foreground">
+                                {field.type === "checkbox" ? "☐" :
+                                 field.type === "select" || field.type === "multiSelect" ?
+                                   ((field.options?.choices as string[] | undefined)?.length || 0) + " options" :
+                                   "—"}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  if (task) {
+                                    deleteCustomFieldMutation.mutate({
+                                      listId: task.listId,
+                                      fieldId: field.id,
+                                    })
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">No custom fields</span>
+                      <p className="text-sm text-muted-foreground py-1">No custom fields yet. Add one to track extra information.</p>
                     )}
-                    
+
                     {/* Add Custom Field Dialog */}
                     <Dialog open={isCustomFieldDialogOpen} onOpenChange={setIsCustomFieldDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
-                          <Plus className="h-3 w-3 mr-1" />
+                        <Button variant="outline" size="sm" className="h-8 text-xs">
+                          <Plus className="h-3.5 w-3.5 mr-1.5" />
                           Add Field
                         </Button>
                       </DialogTrigger>
@@ -787,7 +827,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                             <Input
                               value={newFieldName}
                               onChange={(e) => setNewFieldName(e.target.value)}
-                              placeholder="e.g., Priority, Budget, Team"
+                              placeholder="e.g., Story Points, Sprint, Budget"
                             />
                           </div>
                           <div className="space-y-2">
@@ -854,16 +894,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       </DialogContent>
                     </Dialog>
                   </div>
-                </PropertyRow>
-
-                {/* Collapse empty fields toggle */}
-                <button
-                  onClick={() => setCollapseEmpty(!collapseEmpty)}
-                  className="flex items-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
-                >
-                  <ChevronDown className={cn("h-3 w-3 transition-transform", collapseEmpty && "-rotate-90")} />
-                  {collapseEmpty ? "Show empty fields" : "Collapse empty fields"}
-                </button>
+                )}
               </div>
 
               <Separator />
