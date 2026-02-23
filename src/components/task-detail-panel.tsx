@@ -305,36 +305,40 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   }, [timerInterval])
 
   // URL management for shareable task links
-  const [previousUrl, setPreviousUrl] = useState<string>("")
+  const [initialUrl, setInitialUrl] = useState<string>("")
   
   useEffect(() => {
-    if (open && taskId && workspaceId) {
-      // Push URL when panel opens
-      const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
-      // Only push if current URL is different (avoid duplicates in history)
-      if (!window.location.pathname.includes(taskId)) {
-        // Save current URL for when we close
-        setPreviousUrl(window.location.pathname)
-        window.history.pushState({ taskId }, "", taskUrl)
-      }
-    } else if (!open && previousUrl) {
-      // Restore URL when panel closes
-      window.history.pushState({}, "", previousUrl)
-      setPreviousUrl("")
+    // Save the initial URL when component mounts
+    if (!initialUrl && typeof window !== "undefined") {
+      setInitialUrl(window.location.pathname)
     }
-  }, [open, taskId, workspaceId, previousUrl])
+  }, [initialUrl])
 
-  // Handle browser back button — close panel when URL no longer has taskId
+  useEffect(() => {
+    if (!open || !taskId || !workspaceId) return
+    
+    const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
+    const currentPath = window.location.pathname
+    
+    // Only push if we're not already on this task's URL
+    if (!currentPath.endsWith(taskId) && !currentPath.includes(`/tasks/${taskId}`)) {
+      // Use replaceState to avoid creating duplicate entries when opening same task
+      window.history.replaceState({ taskId }, "", taskUrl)
+    }
+  }, [open, taskId, workspaceId])
+
+  // Handle browser back/forward — close panel when navigating away
   useEffect(() => {
     const handlePopState = () => {
-      if (open && taskId && !window.location.pathname.includes(taskId)) {
+      // If we're on a task URL but the panel is somehow closed, we're navigating away
+      if (!window.location.pathname.includes("/tasks/")) {
         onClose()
       }
     }
 
     window.addEventListener("popstate", handlePopState)
     return () => window.removeEventListener("popstate", handlePopState)
-  }, [open, taskId, onClose])
+  }, [onClose])
 
   const handleSave = useCallback(() => {
     if (!task) return
