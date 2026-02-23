@@ -47,7 +47,9 @@ import {
   useDeleteSprint,
   useRemoveTaskFromSprint,
   useMoveTaskBetweenSprints,
+  useStatuses,
 } from "@/hooks/useQueries"
+import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { cn } from "@/lib/utils"
 import type { TaskResponse, SprintResponse } from "@/lib/api"
 import { format, differenceInDays, eachDayOfInterval, isAfter, isBefore, isToday } from "date-fns"
@@ -170,6 +172,7 @@ function BurndownChart({
 function SprintTaskCard({
   task,
   sprintId,
+  onClick,
 }: {
   task: {
     id: string
@@ -181,6 +184,7 @@ function SprintTaskCard({
     spaceColor?: string | null
   }
   sprintId: string
+  onClick?: () => void
 }) {
   const removeFromSprint = useRemoveTaskFromSprint()
 
@@ -192,14 +196,14 @@ function SprintTaskCard({
   }
 
   return (
-    <div className="group rounded-lg border bg-card p-3 shadow-sm hover:shadow-md transition-shadow">
+    <div className="group rounded-lg border bg-card p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
       <div className="flex items-start justify-between">
-        <h4 className="text-sm font-medium leading-tight">{task.title}</h4>
+        <h4 className="text-sm font-medium leading-tight hover:text-primary transition-colors">{task.title}</h4>
         <Button
           variant="ghost"
           size="icon"
           className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={() => removeFromSprint.mutate({ sprintId, taskId: task.id })}
+          onClick={(e) => { e.stopPropagation(); removeFromSprint.mutate({ sprintId, taskId: task.id }) }}
         >
           <X className="h-3 w-3" />
         </Button>
@@ -236,6 +240,7 @@ function KanbanColumn({
   column,
   tasks,
   sprintId,
+  onTaskClick,
 }: {
   column: { key: string; label: string; color: string }
   tasks: Array<{
@@ -248,6 +253,7 @@ function KanbanColumn({
     spaceColor?: string | null
   }>
   sprintId: string
+  onTaskClick?: (taskId: string) => void
 }) {
   return (
     <div className="flex-1 min-w-[250px]">
@@ -260,7 +266,7 @@ function KanbanColumn({
       </div>
       <div className="space-y-2 min-h-[100px] bg-muted/30 rounded-lg p-2">
         {tasks.map((task) => (
-          <SprintTaskCard key={task.id} task={task} sprintId={sprintId} />
+          <SprintTaskCard key={task.id} task={task} sprintId={sprintId} onClick={() => onTaskClick?.(task.id)} />
         ))}
         {tasks.length === 0 && (
           <div className="flex items-center justify-center h-[80px] text-xs text-muted-foreground">
@@ -286,6 +292,11 @@ export default function SprintDetailPage() {
 
   const sprint = data?.sprint
   const tasks: TaskResponse[] = data?.tasks ?? []
+
+  // Task detail panel state
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
+  const selectedTask = tasks.find((t) => t.id === selectedTaskId) || null
+  const { data: statuses = [] } = useStatuses(selectedTask?.listId)
 
   const startDate = sprint ? new Date(sprint.startDate) : new Date()
   const endDate = sprint ? new Date(sprint.endDate) : new Date()
@@ -562,6 +573,7 @@ export default function SprintDetailPage() {
                 column={column}
                 tasks={tasksByStatus[column.key] ?? []}
                 sprintId={sprintId}
+                onTaskClick={(taskId) => setSelectedTaskId(taskId)}
               />
             ))}
           </div>
@@ -670,6 +682,15 @@ export default function SprintDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task Detail Panel */}
+      <TaskDetailPanel
+        task={selectedTask}
+        open={!!selectedTaskId}
+        onClose={() => setSelectedTaskId(null)}
+        statuses={statuses}
+        workspaceId={workspaceId}
+      />
     </div>
   )
 }
