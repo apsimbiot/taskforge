@@ -1591,10 +1591,10 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
           {/* Activity Feed - Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Real Activity History */}
+            {/* Real Activity History - newest first */}
             {activityTab === "all" || activityTab === "history" ? (
               currentTask?.activities && currentTask.activities.length > 0 ? (
-                currentTask.activities.map((activity) => {
+                [...currentTask.activities].reverse().map((activity) => {
                   const actionText = getActivityActionText(activity)
                   return (
                     <ActivityItem
