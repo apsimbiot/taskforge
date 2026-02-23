@@ -19,7 +19,7 @@ import { TimeTracker } from "@/components/time-tracker"
 import { KanbanBoard } from "@/components/kanban-board"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { useTaskPanel } from "@/store/useTaskPanel"
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee } from "@/hooks/useQueries"
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee, useList } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
 
@@ -176,6 +176,7 @@ export default function ListPage({
   params: Promise<{ id: string; spaceId: string; listId: string }>
 }) {
   const { id: workspaceId, spaceId, listId } = use(params)
+  const { data: list, isLoading: isListLoading } = useList(listId)
   const { data: tasks, isLoading } = useTasks(listId)
   const { data: statuses } = useStatuses(listId)
   const createTaskMutation = useCreateTask()
@@ -532,7 +533,7 @@ export default function ListPage({
         />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">List</h1>
+            <h1 className="text-2xl font-bold">{isListLoading ? "Loading..." : list?.name || "List"}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {processedTasks.length} task{processedTasks.length !== 1 ? "s" : ""}
               {processedTasks.length !== (tasks?.length || 0) && (

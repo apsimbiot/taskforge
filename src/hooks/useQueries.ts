@@ -3,11 +3,13 @@ import {
   fetchWorkspaces,
   createWorkspace,
   fetchSpaces,
+  fetchSpace,
   createSpace,
   fetchFolders,
   createFolder,
   fetchFolderLists,
   fetchSpaceLists,
+  fetchList,
   createList,
   fetchTasks,
   createTask,
@@ -96,6 +98,14 @@ export function useSpaces(workspaceId: string | undefined) {
   })
 }
 
+export function useSpace(spaceId: string | undefined) {
+  return useQuery<SpaceResponse>({
+    queryKey: ["space", spaceId],
+    queryFn: () => fetchSpace(spaceId!),
+    enabled: !!spaceId,
+  })
+}
+
 export function useCreateSpace() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -156,6 +166,14 @@ export function useSpaceLists(spaceId: string | undefined) {
     queryKey: ["lists", "space", spaceId],
     queryFn: () => fetchSpaceLists(spaceId!),
     enabled: !!spaceId,
+  })
+}
+
+export function useList(listId: string | undefined) {
+  return useQuery<ListResponse>({
+    queryKey: ["list", listId],
+    queryFn: () => fetchList(listId!),
+    enabled: !!listId,
   })
 }
 

@@ -1,25 +1,36 @@
 import { NextRequest, NextResponse } from "next/server"
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
+import { S3Client, GetObjectCommand, HeadObjectCommand } from "@aws-sdk/client-s3"
+import { ensureBucket, s3Client, BUCKET } from "@/lib/init-minio"
 
-const s3Client = new S3Client({
-  endpoint: process.env.S3_ENDPOINT || "http://minio:9000",
-  region: process.env.S3_REGION || "us-east-1",
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY || "taskforge",
-    secretAccessKey: process.env.S3_SECRET_KEY || "taskforge123",
-  },
-  forcePathStyle: true,
-})
+// Lazy initialization flag
+let initialized = false
 
-const BUCKET = process.env.S3_BUCKET || "taskforge"
+async function ensureInitialized() {
+  if (!initialized) {
+    await ensureBucket()
+    initialized = true
+  }
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    await ensureInitialized()
+    
     const { path } = await params
     const key = path.join("/")
+
+    // Check if file exists first
+    try {
+      await s3Client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
+    } catch (headError: any) {
+      if (headError?.name === "NotFound" || headError?.$metadata?.httpStatusCode === 404) {
+        return NextResponse.json({ error: "File not found" }, { status: 404 })
+      }
+      console.error("HeadObject error:", headError)
+    }
 
     const command = new GetObjectCommand({
       Bucket: BUCKET,

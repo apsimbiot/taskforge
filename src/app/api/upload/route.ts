@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { auth } from "@/auth";
 import { randomUUID } from "crypto";
+import { ensureBucket } from "@/lib/init-minio";
 
 const s3Client = new S3Client({
   endpoint: process.env.S3_ENDPOINT || "http://minio:9000",
@@ -17,6 +18,8 @@ const BUCKET = process.env.S3_BUCKET || "taskforge";
 
 export async function POST(request: NextRequest) {
   try {
+    // Ensure bucket exists
+    await ensureBucket()
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

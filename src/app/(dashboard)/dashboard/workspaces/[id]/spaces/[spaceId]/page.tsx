@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { CreateFolderDialog } from "@/components/create-folder-dialog"
-import { useFolders, useSpaceLists, useCreateFolder } from "@/hooks/useQueries"
+import { useFolders, useSpaceLists, useCreateFolder, useSpace } from "@/hooks/useQueries"
 import { useRouter } from "next/navigation"
 
 export default function SpacePage({
@@ -16,12 +16,13 @@ export default function SpacePage({
 }) {
   const { id: workspaceId, spaceId } = use(params)
   const router = useRouter()
+  const { data: space, isLoading: spaceLoading } = useSpace(spaceId)
   const { data: folders, isLoading: foldersLoading } = useFolders(spaceId)
   const { data: lists, isLoading: listsLoading } = useSpaceLists(spaceId)
   const [showCreateFolder, setShowCreateFolder] = useState(false)
   const createFolderMutation = useCreateFolder()
 
-  const isLoading = foldersLoading || listsLoading
+  const isLoading = spaceLoading || foldersLoading || listsLoading
 
   return (
     <div className="flex flex-col h-full">
@@ -36,7 +37,7 @@ export default function SpacePage({
         />
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Space</h1>
+            <h1 className="text-2xl font-bold">{spaceLoading ? "Loading..." : space?.name || "Space"}</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Folders and lists in this space
             </p>
