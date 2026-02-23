@@ -460,11 +460,11 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const currentStatus = statuses.find((s) => normalizeStatusName(s.name) === status)
   const priorityConfig = PRIORITIES.find((p) => p.value === priority)
 
-  // Mock breadcrumb - would need space/folder/list from task context
+  // Build breadcrumb from task's list/space data
+  const taskWithRelations = currentTask as (typeof currentTask & { list?: { name: string; space?: { name: string } } }) | undefined
   const breadcrumb = [
-    { label: "Space", value: "My Space" },
-    { label: "Folder", value: "Projects" },
-    { label: "List", value: "To Do" },
+    ...(taskWithRelations?.list?.space?.name ? [{ label: "Space", value: taskWithRelations.list.space.name }] : []),
+    ...(taskWithRelations?.list?.name ? [{ label: "List", value: taskWithRelations.list.name }] : []),
     { label: "Task", value: currentTask?.title || "" },
   ]
 

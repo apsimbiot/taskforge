@@ -193,7 +193,8 @@ export function useTask(taskId: string | undefined) {
     queryFn: async () => {
       const res = await fetch(`/api/tasks/${taskId}`)
       if (!res.ok) throw new Error("Failed to fetch task")
-      return res.json()
+      const data = await res.json()
+      return data.task || data
     },
     enabled: !!taskId,
   })

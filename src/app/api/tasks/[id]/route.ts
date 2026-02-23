@@ -66,6 +66,14 @@ export async function GET(
     const task = await db.query.tasks.findFirst({
       where: eq(tasks.id, taskId),
       with: {
+        list: {
+          columns: { id: true, name: true, spaceId: true },
+          with: {
+            space: {
+              columns: { id: true, name: true, workspaceId: true },
+            },
+          },
+        },
         assignees: {
           with: {
             user: {
