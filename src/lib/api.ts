@@ -182,6 +182,7 @@ export async function updateTask(
     dueDate: string
     timeEstimate: number
     order: number
+    customFields: Record<string, unknown>
   }>
 ): Promise<{ task: TaskResponse }> {
   return fetchJSON(`/tasks/${taskId}`, {

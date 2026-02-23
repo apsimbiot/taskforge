@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -769,22 +770,17 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       </div>
                     ) : customFields.length > 0 ? (
                       <div className="grid grid-cols-2 gap-3">
-                        {customFields.map((field) => (
+                        {customFields.map((field) => {
+                          // Get current value from task.customFields
+                          const fieldValue = task?.customFields?.[field.id]
+                          
+                          return (
                           <div
                             key={field.id}
-                            className="flex items-center justify-between gap-2 p-2.5 rounded-md border border-border/50 bg-muted/20 group"
+                            className="flex flex-col gap-1.5 p-2.5 rounded-md border border-border/50 bg-muted/20"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs text-muted-foreground">{field.type}</span>
+                            <div className="flex items-center justify-between">
                               <span className="text-sm font-medium truncate">{field.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground">
-                                {field.type === "checkbox" ? "☐" :
-                                 field.type === "select" || field.type === "multiSelect" ?
-                                   ((field.options?.choices as string[] | undefined)?.length || 0) + " options" :
-                                   "—"}
-                              </span>
                               <button
                                 onClick={() => {
                                   if (task) {
@@ -799,8 +795,273 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                 <X className="h-3.5 w-3.5" />
                               </button>
                             </div>
+                            
+                            {/* Render appropriate input based on field type */}
+                            {field.type === "text" && (
+                              <Input
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="Enter value..."
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "textarea" && (
+                              <Textarea
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="Enter value..."
+                                className="h-16 text-sm resize-none"
+                              />
+                            )}
+                            {field.type === "number" && (
+                              <Input
+                                type="number"
+                                value={fieldValue as number || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="0"
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "checkbox" && (
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={fieldValue as boolean || false}
+                                  onCheckedChange={(checked) => {
+                                    if (task) {
+                                      const newCustomFields = { ...task.customFields, [field.id]: checked }
+                                      updateTaskMutation.mutate({
+                                        taskId: task.id,
+                                        customFields: newCustomFields,
+                                      })
+                                    }
+                                  }}
+                                />
+                                <span className="text-xs text-muted-foreground">
+                                  {fieldValue ? "Yes" : "No"}
+                                </span>
+                              </div>
+                            )}
+                            {field.type === "date" && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className={cn(
+                                      "h-8 justify-start text-left font-normal text-sm",
+                                      !fieldValue && "text-muted-foreground"
+                                    )}
+                                  >
+                                    <Calendar className="mr-2 h-4 w-4" />
+                                    {fieldValue ? new Date(fieldValue as string).toLocaleDateString() : "Select date"}
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={fieldValue ? new Date(fieldValue as string) : undefined}
+                                    onSelect={(date) => {
+                                      if (task && date) {
+                                        const newCustomFields = { ...task.customFields, [field.id]: date.toISOString() }
+                                        updateTaskMutation.mutate({
+                                          taskId: task.id,
+                                          customFields: newCustomFields,
+                                        })
+                                      }
+                                    }}
+                                    initialFocus
+                                  />
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                            {field.type === "select" && (
+                              <Select
+                                value={fieldValue as string || ""}
+                                onValueChange={(value) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-sm">
+                                  <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(field.options?.choices as string[] | undefined)?.map((choice: string) => (
+                                    <SelectItem key={choice} value={choice}>{choice}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                            {field.type === "url" && (
+                              <Input
+                                type="url"
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="https://..."
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "email" && (
+                              <Input
+                                type="email"
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="email@example.com"
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "phone" && (
+                              <Input
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder="+1 234 567 8900"
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "currency" && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-muted-foreground text-sm">$</span>
+                                <Input
+                                  type="number"
+                                  value={fieldValue as number || ""}
+                                  onChange={(e) => {
+                                    if (task) {
+                                      const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
+                                      updateTaskMutation.mutate({
+                                        taskId: task.id,
+                                        customFields: newCustomFields,
+                                      })
+                                    }
+                                  }}
+                                  placeholder="0.00"
+                                  className="h-8 text-sm"
+                                />
+                              </div>
+                            )}
+                            {field.type === "percentage" && (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="number"
+                                  value={fieldValue as number || ""}
+                                  onChange={(e) => {
+                                    if (task) {
+                                      const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
+                                      updateTaskMutation.mutate({
+                                        taskId: task.id,
+                                        customFields: newCustomFields,
+                                      })
+                                    }
+                                  }}
+                                  placeholder="0"
+                                  className="h-8 text-sm"
+                                />
+                                <span className="text-muted-foreground text-sm">%</span>
+                              </div>
+                            )}
+                            {field.type === "time" && (
+                              <Input
+                                type="time"
+                                value={fieldValue as string || ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {field.type === "datetime" && (
+                              <Input
+                                type="datetime-local"
+                                value={fieldValue ? (fieldValue as string).slice(0, 16) : ""}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? new Date(e.target.value).toISOString() : null }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                className="h-8 text-sm"
+                              />
+                            )}
+                            {/* Fallback for unsupported types */}
+                            {!["text", "textarea", "number", "checkbox", "date", "select", "url", "email", "phone", "currency", "percentage", "time", "datetime", "multiSelect", "user"].includes(field.type) && (
+                              <Input
+                                value={String(fieldValue || "")}
+                                onChange={(e) => {
+                                  if (task) {
+                                    const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
+                                    updateTaskMutation.mutate({
+                                      taskId: task.id,
+                                      customFields: newCustomFields,
+                                    })
+                                  }
+                                }}
+                                placeholder={`Enter ${field.type}...`}
+                                className="h-8 text-sm"
+                              />
+                            )}
                           </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground py-1">No custom fields yet. Add one to track extra information.</p>

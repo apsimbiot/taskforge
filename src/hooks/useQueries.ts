@@ -218,6 +218,7 @@ export function useUpdateTask() {
       dueDate?: string
       timeEstimate?: number
       order?: number
+      customFields?: Record<string, unknown>
     }) => updateTask(taskId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
