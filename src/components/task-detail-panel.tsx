@@ -5,6 +5,7 @@ import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Tr
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -590,26 +591,31 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       <Skeleton className="h-6 w-20" />
                     ) : (
                       <>
-                        {assignees.map((assignee) => (
-                          <div
-                            key={assignee.id}
-                            className="flex items-center gap-1.5 bg-muted rounded-full pr-2 pl-1 py-0.5 group"
-                          >
-                            <Avatar className="h-5 w-5">
-                              <AvatarImage src={assignee.user.avatarUrl || undefined} />
-                              <AvatarFallback className="text-[10px]">
-                                {getInitials(assignee.user.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-xs">{assignee.user.name?.split(" ")[0]}</span>
-                            <button
-                              onClick={() => handleRemoveAssignee(assignee.userId)}
-                              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
+                        <TooltipProvider delayDuration={200}>
+                          {assignees.map((assignee) => (
+                            <Tooltip key={assignee.id}>
+                              <TooltipTrigger asChild>
+                                <div className="relative group cursor-pointer">
+                                  <Avatar className="h-8 w-8 border-2 border-background hover:ring-2 hover:ring-primary/50 transition-all">
+                                    <AvatarImage src={assignee.user.avatarUrl || undefined} />
+                                    <AvatarFallback className="text-xs">
+                                      {getInitials(assignee.user.name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <button
+                                    onClick={() => handleRemoveAssignee(assignee.userId)}
+                                    className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                <p>{assignee.user.name || assignee.user.email}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </TooltipProvider>
                       </>
                     )}
                     <Popover open={assigneePopoverOpen} onOpenChange={setAssigneePopoverOpen}>
