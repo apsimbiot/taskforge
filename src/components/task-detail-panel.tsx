@@ -305,33 +305,33 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   }, [timerInterval])
 
   // URL management for shareable task links
-  const [initialUrl, setInitialUrl] = useState<string>("")
+  const [initialUrl] = useState<string>("")
+  const isInitialLoad = useRef(true)
   
-  useEffect(() => {
-    // Save the initial URL when component mounts
-    if (!initialUrl && typeof window !== "undefined") {
-      setInitialUrl(window.location.pathname)
-    }
-  }, [initialUrl])
-
   useEffect(() => {
     if (!open || !taskId || !workspaceId) return
     
     const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
     const currentPath = window.location.pathname
     
-    // Only push if we're not already on this task's URL
-    if (!currentPath.endsWith(taskId) && !currentPath.includes(`/tasks/${taskId}`)) {
-      // Use replaceState to avoid creating duplicate entries when opening same task
-      window.history.replaceState({ taskId }, "", taskUrl)
+    // If we're opening from the list view (URL doesn't have /tasks/), push a new history entry
+    // If we're loading directly (already on /tasks/), replace to preserve direct-link behavior
+    if (!currentPath.includes("/tasks/")) {
+      window.history.pushState({ taskId, fromList: true }, "", taskUrl)
+    } else if (isInitialLoad.current) {
+      // Direct URL load - don't add to history, we're already at the right place
+      isInitialLoad.current = false
     }
   }, [open, taskId, workspaceId])
 
-  // Handle browser back/forward — close panel when navigating away
+  // Handle browser back/forward
   useEffect(() => {
-    const handlePopState = () => {
-      // If we're on a task URL but the panel is somehow closed, we're navigating away
-      if (!window.location.pathname.includes("/tasks/")) {
+    const handlePopState = (event: PopStateEvent) => {
+      // If event has fromList=true, user pressed back from the list view - close panel
+      if (event.state?.fromList) {
+        onClose()
+      } else if (!window.location.pathname.includes("/tasks/")) {
+        // Navigated away from task URL
         onClose()
       }
     }
