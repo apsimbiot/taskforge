@@ -60,10 +60,8 @@ export async function POST(request: NextRequest) {
 
     await s3Client.send(command);
 
-    // Generate public URL
-    const publicUrl = process.env.S3_PUBLIC_URL 
-      ? `${process.env.S3_PUBLIC_URL}/${key}`
-      : `${process.env.S3_ENDPOINT}/${BUCKET}/${key}`;
+    // Generate URL pointing to our proxy route
+    const publicUrl = `/api/files/${key}`;
 
     return NextResponse.json({ 
       url: publicUrl,

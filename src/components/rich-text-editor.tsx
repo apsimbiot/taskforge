@@ -49,6 +49,7 @@ export function RichTextEditor({ content, onChange, placeholder, minHeight = "15
     ],
     content: typeof content === "string" ? content : (content || ""),
     editable,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class: "prose prose-invert prose-sm max-w-none focus:outline-none min-h-[150px]",
