@@ -203,8 +203,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       title: task.title,
       status: task.status,
       priority: task.priority,
-      dueDate: task.dueDate,
+      dueDate: task.dueDate?.toISOString?.() || task.dueDate,
       listId: task.listId,
+      createdAt: task.createdAt?.toISOString?.() || task.createdAt,
+      updatedAt: task.updatedAt?.toISOString?.() || task.updatedAt,
+    }));
+
+    // Serialize dates in workspace tasks
+    const serializedWorkspaceTasks = workspaceTasks.map((task) => ({
+      ...task,
+      createdAt: task.createdAt?.toISOString?.() || task.createdAt,
+      updatedAt: task.updatedAt?.toISOString?.() || task.updatedAt,
+      dueDate: task.dueDate?.toISOString?.() || task.dueDate,
     }));
 
     return NextResponse.json({
@@ -220,6 +230,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       sprintVelocity,
       workloadPerAssignee,
       overdueTasks: overdueTasksList,
+      recentTasks: serializedWorkspaceTasks.slice(0, 20),
     });
   } catch (error) {
     console.error("Error fetching dashboard:", error);
