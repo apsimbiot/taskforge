@@ -1,23 +1,9 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
+import { useCallback, useRef, useState } from "react"
+import MDEditor from "@uiw/react-md-editor"
+import { Image as ImageIcon, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { MarkdownRenderer } from "./markdown-renderer"
-import {
-  Bold,
-  Italic,
-  Code,
-  Link,
-  List,
-  ListOrdered,
-  Eye,
-  Edit3,
-  Heading2,
-  Quote,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface MarkdownEditorProps {
   value: string
@@ -32,124 +18,97 @@ export function MarkdownEditor({
   value,
   onChange,
   onBlur,
-  placeholder = "Write something...",
   minHeight = "150px",
   className,
 }: MarkdownEditorProps) {
-  const [showPreview, setShowPreview] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
 
-  const insertMarkdown = useCallback(
-    (before: string, after: string = "", placeholder: string = "") => {
-      const textarea = textareaRef.current
-      if (!textarea) return
+  const handleImageUpload = useCallback(async (file: File) => {
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
 
-      const start = textarea.selectionStart
-      const end = textarea.selectionEnd
-      const selectedText = value.substring(start, end) || placeholder
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-      const newText =
-        value.substring(0, start) +
-        before +
-        selectedText +
-        after +
-        value.substring(end)
+      if (!response.ok) {
+        throw new Error("Upload failed")
+      }
 
-      onChange(newText)
+      const data = await response.json()
+      // Insert markdown image syntax
+      const imageMarkdown = `![${file.name}](${data.url})`
+      
+      // Append the image markdown to current value
+      const newValue = value + "\n" + imageMarkdown
+      onChange(newValue)
+      
+      return data.url
+    } catch (error) {
+      console.error("Error uploading image:", error)
+      throw error
+    } finally {
+      setIsUploading(false)
+    }
+  }, [value, onChange])
 
-      // Reset cursor position after the inserted text
-      setTimeout(() => {
-        textarea.focus()
-        const newCursorPos = start + before.length + selectedText.length + after.length
-        textarea.setSelectionRange(newCursorPos, newCursorPos)
-      }, 0)
-    },
-    [value, onChange]
-  )
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
 
-  const handleBold = () => insertMarkdown("**", "**", "bold text")
-  const handleItalic = () => insertMarkdown("*", "*", "italic text")
-  const handleCode = () => insertMarkdown("`", "`", "code")
-  const handleCodeBlock = () => insertMarkdown("\n```\n", "\n```\n", "code block")
-  const handleLink = () => insertMarkdown("[", "](url)", "link text")
-  const handleList = () => insertMarkdown("\n- ", "", "list item")
-  const handleOrderedList = () => insertMarkdown("\n1. ", "", "list item")
-  const handleHeading = () => insertMarkdown("\n## ", "", "heading")
-  const handleQuote = () => insertMarkdown("\n> ", "", "quote")
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
 
-  const toolbarButtons = [
-    { icon: Bold, action: handleBold, title: "Bold (Ctrl+B)" },
-    { icon: Italic, action: handleItalic, title: "Italic (Ctrl+I)" },
-    { icon: Code, action: handleCode, title: "Inline Code" },
-    { icon: Heading2, action: handleHeading, title: "Heading" },
-    { icon: List, action: handleList, title: "Bullet List" },
-    { icon: ListOrdered, action: handleOrderedList, title: "Numbered List" },
-    { icon: Link, action: handleLink, title: "Link" },
-    { icon: Quote, action: handleQuote, title: "Quote" },
-  ]
+    await handleImageUpload(file)
+    
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }, [handleImageUpload])
+
+  const height = parseInt(minHeight) || 150
 
   return (
-    <div className={cn("border rounded-md overflow-hidden", className)}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b bg-muted/30 px-2 py-1">
-        <div className="flex items-center gap-0.5">
-          {toolbarButtons.map((btn, idx) => (
-            <Button
-              key={idx}
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0"
-              onClick={btn.action}
-              title={btn.title}
-            >
-              <btn.icon className="h-3.5 w-3.5" />
-            </Button>
-          ))}
-        </div>
-        <Tabs
-          value={showPreview ? "preview" : "edit"}
-          onValueChange={(v) => setShowPreview(v === "preview")}
-          className="h-7"
+    <div data-color-mode="dark" className={className}>
+      <MDEditor
+        value={value}
+        onChange={(val) => onChange(val || "")}
+        onBlur={onBlur}
+        preview="edit"
+        height={height}
+        enableScroll={true}
+      />
+      {/* Image upload button below editor */}
+      <div className="flex items-center gap-2 mt-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={handleFileSelect}
+          disabled={isUploading}
         >
-          <TabsList className="h-6 bg-transparent">
-            <TabsTrigger
-              value="edit"
-              className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-background"
-            >
-              <Edit3 className="h-3 w-3" />
-              Edit
-            </TabsTrigger>
-            <TabsTrigger
-              value="preview"
-              className="h-6 px-2 text-xs gap-1 data-[state=active]:bg-background"
-            >
-              <Eye className="h-3 w-3" />
-              Preview
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
-
-      {/* Editor / Preview */}
-      {showPreview ? (
-        <div
-          className="p-3 overflow-auto"
-          style={{ minHeight }}
-        >
-          <MarkdownRenderer content={value} />
-        </div>
-      ) : (
-        <Textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
-          placeholder={placeholder}
-          className="border-0 resize-none focus-visible:ring-0 text-sm"
-          style={{ minHeight }}
+          {isUploading ? (
+            <Upload className="h-3.5 w-3.5 animate-pulse" />
+          ) : (
+            <ImageIcon className="h-3.5 w-3.5" />
+          )}
+          {isUploading ? "Uploading..." : "Add Image"}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+          className="hidden"
+          onChange={handleFileChange}
         />
-      )}
+      </div>
     </div>
   )
 }
