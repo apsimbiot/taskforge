@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban, FileText } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban, FileText, Edit3, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
@@ -190,6 +191,9 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false)
   const [assigneeSearch, setAssigneeSearch] = useState("")
 
+  // Image preview
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+
   // Tags (mock - would need tag API)
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
@@ -280,7 +284,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   // Populate form when task changes
   useEffect(() => {
     if (task) {
-      setTitle(task.title)
+      setTitle(currentTask?.title || "")
       setDescription(task.description as Record<string, unknown> | null)
       setStatus(task.status || "todo")
       setPriority((task.priority as Priority) || "none")
@@ -444,10 +448,11 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     { label: "Space", value: "My Space" },
     { label: "Folder", value: "Projects" },
     { label: "List", value: "To Do" },
-    { label: "Task", value: task.title },
+    { label: "Task", value: currentTask?.title || "" },
   ]
 
   return (
+    <>
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div 
         className="bg-background rounded-lg shadow-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex animate-in fade-in zoom-in-95 duration-200"
@@ -1510,7 +1515,10 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                       >
                         {/* Thumbnail or icon */}
                         {isImageFile(attachment.mimeType) ? (
-                          <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0 bg-muted">
+                          <div 
+                            className="h-10 w-10 rounded overflow-hidden flex-shrink-0 bg-muted cursor-pointer hover:ring-2 hover:ring-primary"
+                            onClick={() => setPreviewImage(attachment.url)}
+                          >
                             <img
                               src={attachment.url}
                               alt={attachment.filename}
@@ -1525,14 +1533,18 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
                         {/* File info */}
                         <div className="flex-1 min-w-0">
-                          <a
-                            href={attachment.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium hover:underline truncate block"
+                          <button
+                            onClick={() => {
+                              if (isImageFile(attachment.mimeType)) {
+                                setPreviewImage(attachment.url)
+                              } else {
+                                window.open(attachment.url, "_blank")
+                              }
+                            }}
+                            className="text-sm font-medium hover:underline truncate block text-left"
                           >
                             {attachment.filename}
-                          </a>
+                          </button>
                           <span className="text-xs text-muted-foreground">
                             {formatFileSize(attachment.fileSize)}
                           </span>
@@ -1683,6 +1695,22 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
         </div>
       </div>
     </div>
+
+    {/* Image Preview Dialog */}
+    <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+      <DialogContent className="max-w-4xl p-0 bg-transparent border-none">
+        <div className="relative flex items-center justify-center">
+          {previewImage && (
+            <img
+              src={previewImage}
+              alt="Preview"
+              className="max-h-[80vh] max-w-full rounded-lg shadow-2xl"
+            />
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
@@ -1739,6 +1767,3 @@ function ActivityItem({
   )
 }
 
-// Need to import Textarea and Edit3/Eye icons for comment input
-import { Textarea } from "@/components/ui/textarea"
-import { Eye, Edit3 } from "lucide-react"
