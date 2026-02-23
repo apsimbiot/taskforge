@@ -827,7 +827,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                           return (
                           <div
                             key={field.id}
-                            className="flex flex-col gap-1.5 p-2.5 rounded-md border border-border/50 bg-muted/20"
+                            className="group flex flex-col gap-1.5 p-2.5 rounded-md border border-border/50 bg-muted/20 relative"
                           >
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium truncate">{field.name}</span>
@@ -840,7 +840,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                     })
                                   }
                                 }}
-                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity absolute top-2 right-2"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
