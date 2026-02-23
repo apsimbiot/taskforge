@@ -114,8 +114,8 @@ export function TaskTableRow({
 
   const dueDate = task.dueDate ? new Date(task.dueDate) : undefined
 
-  // Calculate indentation
-  const indentPadding = depth * 24 + 8
+  // Calculate indentation — spacer width (depth 0 = 8px, depth 1 = 32px, etc.)
+  const indentWidth = depth * 28 + 8
 
   return (
     <div
@@ -124,13 +124,15 @@ export function TaskTableRow({
         isSelected && "bg-accent/50",
         depth > 0 && "bg-muted/20"
       )}
-      style={{ paddingLeft: `${indentPadding}px` }}
     >
+      {/* Indentation spacer — pushes all content including columns */}
+      <div style={{ width: `${indentWidth}px` }} className="flex-shrink-0" />
+
       {/* Visual connector line for subtasks */}
       {depth > 0 && (
         <div 
           className="absolute left-0 top-0 bottom-0 w-px bg-border" 
-          style={{ left: `${depth * 24 - 8}px` }}
+          style={{ left: `${indentWidth - 4}px` }}
         />
       )}
 
