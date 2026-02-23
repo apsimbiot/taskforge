@@ -187,6 +187,18 @@ export function useTasks(listId: string | undefined) {
   })
 }
 
+export function useTask(taskId: string | undefined) {
+  return useQuery<TaskResponse>({
+    queryKey: ["task", taskId],
+    queryFn: async () => {
+      const res = await fetch(`/api/tasks/${taskId}`)
+      if (!res.ok) throw new Error("Failed to fetch task")
+      return res.json()
+    },
+    enabled: !!taskId,
+  })
+}
+
 export function useCreateTask() {
   const queryClient = useQueryClient()
   return useMutation({

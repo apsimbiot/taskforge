@@ -810,8 +810,10 @@ export default function ListPage({
       {/* Task Detail Panel */}
       <TaskDetailPanel
         task={selectedTaskId ? tasks?.find((t) => t.id === selectedTaskId) : null}
+        taskId={selectedTaskId || undefined}
         open={isTaskPanelOpen}
         onClose={closeTaskPanel}
+        onTaskSelect={setSelectedTask}
         statuses={statuses || []}
         workspaceId={workspaceId}
       />

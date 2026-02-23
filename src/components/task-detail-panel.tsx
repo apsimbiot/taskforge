@@ -46,6 +46,7 @@ import {
 import { RichTextEditor } from "./rich-text-editor"
 import { MarkdownRenderer } from "./markdown-renderer"
 import {
+  useTask,
   useUpdateTask,
   useDeleteTask,
   useTaskAssignees,
@@ -76,8 +77,10 @@ import type { TaskResponse, StatusResponse, WorkspaceMemberResponse, SubtaskResp
 
 interface TaskDetailPanelProps {
   task: TaskResponse | null | undefined
+  taskId?: string
   open: boolean
   onClose: () => void
+  onTaskSelect?: (taskId: string) => void
   statuses: StatusResponse[]
   workspaceId?: string
 }
@@ -130,7 +133,11 @@ function getInitials(name: string | null): string {
     .slice(0, 2)
 }
 
-export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, statuses, workspaceId }: TaskDetailPanelProps) {
+  // If taskId is passed but task is not, fetch the task (for subtask navigation)
+  const { data: fetchedTask, isLoading: taskLoading } = useTask(taskId)
+  const currentTask = task || fetchedTask
+
   const updateTaskMutation = useUpdateTask()
   const deleteTaskMutation = useDeleteTask()
 
@@ -222,7 +229,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
     setIsUploading(true)
     try {
       for (const file of Array.from(files)) {
-        await uploadAttachmentMutation.mutateAsync({ taskId: task.id, file })
+        await uploadAttachmentMutation.mutateAsync({ taskId: task?.id, file })
       }
     } catch (error) {
       console.error("Upload failed:", error)
@@ -264,7 +271,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleDeleteAttachment = async (attachmentId: string) => {
     if (!task) return
     try {
-      await deleteAttachmentMutation.mutateAsync({ taskId: task.id, attachmentId })
+      await deleteAttachmentMutation.mutateAsync({ taskId: task?.id, attachmentId })
     } catch (error) {
       console.error("Delete failed:", error)
     }
@@ -295,7 +302,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleSave = useCallback(() => {
     if (!task) return
     updateTaskMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       title,
       description: (description ?? undefined) as string | Record<string, unknown> | undefined,
       status,
@@ -307,7 +314,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
   const handleDelete = useCallback(() => {
     if (!task) return
-    deleteTaskMutation.mutate(task.id)
+    deleteTaskMutation.mutate(task?.id)
     setIsDeleteDialogOpen(false)
     onClose()
   }, [task, deleteTaskMutation, onClose])
@@ -348,7 +355,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleAddSubtask = () => {
     if (!newSubtask.trim() || !task) return
     createSubtaskMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       title: newSubtask.trim(),
     })
     setNewSubtask("")
@@ -359,7 +366,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
     // Subtasks are full tasks - toggle between todo and done
     const newStatus = subtask.status === "done" ? "todo" : "done"
     updateTaskMutation.mutate({
-      taskId: subtask.id,
+      taskId: subtask?.id,
       status: newStatus,
     })
   }
@@ -367,13 +374,13 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleDeleteSubtask = (subtaskId: string) => {
     if (!task) return
     deleteSubtaskMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       subtaskId,
     })
   }
 
   const handleStartEditSubtask = (subtask: SubtaskResponse) => {
-    setEditingSubtaskId(subtask.id)
+    setEditingSubtaskId(subtask?.id)
     setEditingSubtaskTitle(subtask.title)
   }
 
@@ -387,7 +394,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleAddComment = () => {
     if (!newCommentText.trim() || !task) return
     createCommentMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       content: newCommentText.trim(),
     })
     setNewComment(null)
@@ -399,7 +406,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleAddAssignee = (member: WorkspaceMemberResponse) => {
     if (!task) return
     addAssigneeMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       userId: member.id,
     })
     setAssigneeSearch("")
@@ -408,7 +415,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const handleRemoveAssignee = (userId: string) => {
     if (!task) return
     removeAssigneeMutation.mutate({
-      taskId: task.id,
+      taskId: task?.id,
       userId,
     })
   }
@@ -517,7 +524,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       setStatus(value)
                       if (task) {
                         updateTaskMutation.mutate({
-                          taskId: task.id,
+                          taskId: task?.id,
                           status: value,
                         })
                       }
@@ -565,7 +572,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       setPriority(newPriority)
                       if (task) {
                         updateTaskMutation.mutate({
-                          taskId: task.id,
+                          taskId: task?.id,
                           priority: newPriority,
                         })
                       }
@@ -651,7 +658,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                             setDueDate(date)
                             if (task && date) {
                               updateTaskMutation.mutate({
-                                taskId: task.id,
+                                taskId: task?.id,
                                 dueDate: date.toISOString(),
                               })
                             }
@@ -825,9 +832,9 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                     value={currentSprint?.id || "none"}
                     onValueChange={(value) => {
                       if (value === "none") {
-                        removeFromSprintMutation.mutate({ taskId: task.id })
+                        removeFromSprintMutation.mutate({ taskId: task?.id })
                       } else {
-                        assignToSprintMutation.mutate({ taskId: task.id, sprintId: value })
+                        assignToSprintMutation.mutate({ taskId: task?.id, sprintId: value })
                       }
                     }}
                   >
@@ -923,7 +930,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -939,7 +946,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -956,7 +963,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -973,7 +980,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                     if (task) {
                                       const newCustomFields = { ...task.customFields, [field.id]: checked }
                                       updateTaskMutation.mutate({
-                                        taskId: task.id,
+                                        taskId: task?.id,
                                         customFields: newCustomFields,
                                       })
                                     }
@@ -1006,7 +1013,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                       if (task && date) {
                                         const newCustomFields = { ...task.customFields, [field.id]: date.toISOString() }
                                         updateTaskMutation.mutate({
-                                          taskId: task.id,
+                                          taskId: task?.id,
                                           customFields: newCustomFields,
                                         })
                                       }
@@ -1023,7 +1030,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1047,7 +1054,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1064,7 +1071,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1080,7 +1087,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1099,7 +1106,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                     if (task) {
                                       const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
                                       updateTaskMutation.mutate({
-                                        taskId: task.id,
+                                        taskId: task?.id,
                                         customFields: newCustomFields,
                                       })
                                     }
@@ -1118,7 +1125,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                     if (task) {
                                       const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? parseFloat(e.target.value) : null }
                                       updateTaskMutation.mutate({
-                                        taskId: task.id,
+                                        taskId: task?.id,
                                         customFields: newCustomFields,
                                       })
                                     }
@@ -1137,7 +1144,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1153,7 +1160,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value ? new Date(e.target.value).toISOString() : null }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1169,7 +1176,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                                   if (task) {
                                     const newCustomFields = { ...task.customFields, [field.id]: e.target.value }
                                     updateTaskMutation.mutate({
-                                      taskId: task.id,
+                                      taskId: task?.id,
                                       customFields: newCustomFields,
                                     })
                                   }
@@ -1318,7 +1325,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   <div className="space-y-1.5 mb-3">
                     {subtasks.map((subtask) => (
                       <div
-                        key={subtask.id}
+                        key={subtask?.id}
                         className="flex items-center gap-2 group text-sm p-2 rounded hover:bg-muted/50 border border-transparent hover:border-border/50"
                       >
                         {/* Status indicator - clickable to cycle */}
@@ -1336,11 +1343,9 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                           />
                         </button>
 
-                        {/* Title - clickable */}
+                        {/* Title - clickable - opens subtask in panel */}
                         <button
-                          onClick={() => {
-                            // Would open subtask detail - for now just let it be
-                          }}
+                          onClick={() => onTaskSelect?.(subtask?.id)}
                           className={cn(
                             "flex-1 text-left truncate cursor-pointer hover:text-primary transition-colors",
                             subtask.status === "done" && "line-through text-muted-foreground"
@@ -1405,7 +1410,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
                               className="text-destructive"
-                              onClick={() => handleDeleteSubtask(subtask.id)}
+                              onClick={() => handleDeleteSubtask(subtask?.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-2" />
                               Delete
