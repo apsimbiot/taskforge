@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -61,6 +61,10 @@ import {
   useCustomFields,
   useCreateCustomField,
   useDeleteCustomField,
+  useSprints,
+  useTaskSprint,
+  useAssignTaskToSprint,
+  useRemoveTaskFromAllSprints,
 } from "@/hooks/useQueries"
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -191,6 +195,12 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const { data: customFields = [], isLoading: customFieldsLoading } = useCustomFields(task?.listId)
   const createCustomFieldMutation = useCreateCustomField()
   const deleteCustomFieldMutation = useDeleteCustomField()
+
+  // Sprint hooks
+  const { data: sprints = [] } = useSprints(workspaceId)
+  const { data: currentSprint, isLoading: sprintLoading } = useTaskSprint(task?.id)
+  const assignToSprintMutation = useAssignTaskToSprint()
+  const removeFromSprintMutation = useRemoveTaskFromAllSprints()
 
   // Populate form when task changes
   useEffect(() => {
@@ -735,6 +745,40 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                     </Popover>
                   </div>
                 </PropertyRow>
+
+                {/* Sprint Property Row */}
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                    <FolderKanban className="h-4 w-4" />
+                    Sprint
+                  </span>
+                  <Select
+                    value={currentSprint?.id || "none"}
+                    onValueChange={(value) => {
+                      if (value === "none") {
+                        removeFromSprintMutation.mutate({ taskId: task.id })
+                      } else {
+                        assignToSprintMutation.mutate({ taskId: task.id, sprintId: value })
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 flex-1">
+                      <SelectValue placeholder="No sprint">
+                        {currentSprint ? currentSprint.name : "No sprint"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">
+                        <span className="text-muted-foreground">No sprint</span>
+                      </SelectItem>
+                      {sprints.map((sprint) => (
+                        <SelectItem key={sprint.id} value={sprint.id}>
+                          {sprint.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Collapse empty fields toggle (spans both columns) */}
                 <button

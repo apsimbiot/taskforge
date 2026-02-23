@@ -609,3 +609,30 @@ export async function deleteCustomField(listId: string, fieldId: string): Promis
     method: "DELETE",
   })
 }
+
+// ── Task Sprint ────────────────────────────────────────────────────────────
+export interface TaskSprintResponse {
+  id: string
+  name: string
+  status: string
+  startDate: string
+  endDate: string
+}
+
+export async function fetchTaskSprint(taskId: string): Promise<TaskSprintResponse | null> {
+  const data = await fetchJSON<{ sprints: TaskSprintResponse[] }>(`/tasks/${taskId}/sprint`)
+  return data.sprints[0] || null
+}
+
+export async function assignTaskToSprint(taskId: string, sprintId: string): Promise<void> {
+  return fetchJSON(`/tasks/${taskId}/sprint`, {
+    method: "PUT",
+    body: JSON.stringify({ sprintId }),
+  })
+}
+
+export async function removeTaskFromAllSprints(taskId: string): Promise<void> {
+  return fetchJSON(`/tasks/${taskId}/sprint`, {
+    method: "DELETE",
+  })
+}

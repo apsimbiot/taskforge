@@ -46,6 +46,9 @@ import {
   createCustomField,
   updateCustomField,
   deleteCustomField,
+  fetchTaskSprint,
+  assignTaskToSprint,
+  removeTaskFromAllSprints,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
@@ -60,6 +63,7 @@ import {
   type SubtaskResponse,
   type CommentResponse,
   type CustomFieldDefinitionResponse,
+  type TaskSprintResponse,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -653,6 +657,40 @@ export function useDeleteCustomField() {
       deleteCustomField(listId, fieldId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["custom-fields", variables.listId] })
+    },
+  })
+}
+
+// ── Task Sprint Hooks ───────────────────────────────────────────────────
+
+export function useTaskSprint(taskId: string | undefined) {
+  return useQuery<TaskSprintResponse | null>({
+    queryKey: ["task-sprint", taskId],
+    queryFn: () => fetchTaskSprint(taskId!),
+    enabled: !!taskId,
+  })
+}
+
+export function useAssignTaskToSprint() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, sprintId }: { taskId: string; sprintId: string }) =>
+      assignTaskToSprint(taskId, sprintId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-sprint", variables.taskId] })
+      queryClient.invalidateQueries({ queryKey: ["sprints"] })
+    },
+  })
+}
+
+export function useRemoveTaskFromAllSprints() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId }: { taskId: string }) =>
+      removeTaskFromAllSprints(taskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-sprint", variables.taskId] })
+      queryClient.invalidateQueries({ queryKey: ["sprints"] })
     },
   })
 }
