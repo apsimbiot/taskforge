@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useCallback, useMemo } from "react"
+import { use, useState, useCallback, useMemo, useEffect } from "react"
 import {
   Plus,
   List,
@@ -206,6 +206,24 @@ export default function ListPage({
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const { selectedTaskId, setSelectedTask, isOpen: isTaskPanelOpen, close: closeTaskPanel } = useTaskPanel()
+
+  // Sync panel state with browser back/forward
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname
+      const taskMatch = path.match(/\/tasks\/([a-f0-9-]+)/)
+      if (taskMatch) {
+        // Forward navigation to a task URL — open the panel
+        setSelectedTask(taskMatch[1])
+      } else {
+        // Back navigation away from task URL — close the panel
+        closeTaskPanel()
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [setSelectedTask, closeTaskPanel])
 
   // Available filter options (from API or defaults)
   const availableStatuses = statuses && statuses.length > 0

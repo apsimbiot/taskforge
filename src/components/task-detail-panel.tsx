@@ -304,41 +304,21 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     }
   }, [timerInterval])
 
-  // URL management for shareable task links
-  const [initialUrl] = useState<string>("")
-  const isInitialLoad = useRef(true)
+  // URL management — update URL when panel opens/closes (only from list view context)
+  const prevPathRef = useRef<string>("")
   
   useEffect(() => {
-    if (!open || !taskId || !workspaceId) return
+    if (!workspaceId || typeof window === "undefined") return
     
-    const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
-    const currentPath = window.location.pathname
-    
-    // If we're opening from the list view (URL doesn't have /tasks/), push a new history entry
-    // If we're loading directly (already on /tasks/), replace to preserve direct-link behavior
-    if (!currentPath.includes("/tasks/")) {
-      window.history.pushState({ taskId, fromList: true }, "", taskUrl)
-    } else if (isInitialLoad.current) {
-      // Direct URL load - don't add to history, we're already at the right place
-      isInitialLoad.current = false
-    }
-  }, [open, taskId, workspaceId])
-
-  // Handle browser back/forward
-  useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      // If event has fromList=true, user pressed back from the list view - close panel
-      if (event.state?.fromList) {
-        onClose()
-      } else if (!window.location.pathname.includes("/tasks/")) {
-        // Navigated away from task URL
-        onClose()
+    if (open && taskId) {
+      const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
+      // Only push if we're not already on a task URL
+      if (!window.location.pathname.includes("/tasks/")) {
+        prevPathRef.current = window.location.pathname + window.location.search
+        window.history.pushState({ taskId }, "", taskUrl)
       }
     }
-
-    window.addEventListener("popstate", handlePopState)
-    return () => window.removeEventListener("popstate", handlePopState)
-  }, [onClose])
+  }, [open, taskId, workspaceId])
 
   const handleSave = useCallback(() => {
     if (!task) return
