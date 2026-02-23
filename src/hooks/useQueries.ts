@@ -25,6 +25,7 @@ import {
   deleteSprint,
   addTaskToSprint,
   removeTaskFromSprint,
+  moveTaskBetweenSprints,
   fetchNotifications,
   markNotificationRead,
   markAllNotificationsRead,
@@ -394,6 +395,18 @@ export function useRemoveTaskFromSprint() {
       removeTaskFromSprint(sprintId, taskId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["sprint", variables.sprintId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+export function useMoveTaskBetweenSprints() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ fromSprintId, toSprintId, taskId }: { fromSprintId: string; toSprintId: string; taskId: string }) =>
+      moveTaskBetweenSprints(fromSprintId, toSprintId, taskId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sprints"] })
       queryClient.invalidateQueries({ queryKey: ["tasks"] })
     },
   })

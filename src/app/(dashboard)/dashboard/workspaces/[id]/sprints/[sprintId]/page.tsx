@@ -12,6 +12,8 @@ import {
   Trash2,
   MoreHorizontal,
   X,
+  ArrowRight,
+  FolderKanban,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,13 +26,30 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   useSprint,
+  useSprints,
   useUpdateSprint,
   useDeleteSprint,
   useRemoveTaskFromSprint,
+  useMoveTaskBetweenSprints,
 } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
-import type { TaskResponse } from "@/lib/api"
+import type { TaskResponse, SprintResponse } from "@/lib/api"
 import { format, differenceInDays, eachDayOfInterval, isAfter, isBefore, isToday } from "date-fns"
 import {
   LineChart,
@@ -307,9 +326,52 @@ export default function SprintDetailPage() {
     updateSprintMutation.mutate({ sprintId, status: "active" })
   }
 
-  const handleCompleteSprint = () => {
-    updateSprintMutation.mutate({ sprintId, status: "completed" })
+  // Close Sprint Dialog State
+  const [showCloseDialog, setShowCloseDialog] = useState(false)
+  const [closeOption, setCloseOption] = useState<"move" | "backlog">("backlog")
+  const [targetSprintId, setTargetSprintId] = useState<string>("")
+
+  const { data: allSprints } = useSprints(workspaceId)
+  
+  // Get other sprints (not current one) that are not completed
+  const availableTargetSprints = useMemo(() => {
+    return (allSprints ?? []).filter(
+      (s: SprintResponse) => s.id !== sprintId && s.status !== "completed"
+    )
+  }, [allSprints, sprintId])
+
+  const incompleteTasks = tasks.filter(
+    (t: TaskResponse) => t.status !== "done" && t.status !== "closed" && t.status !== "complete"
+  )
+
+  const handleCloseSprint = () => {
+    setShowCloseDialog(true)
   }
+
+  const confirmCloseSprint = () => {
+    if (closeOption === "move" && targetSprintId && incompleteTasks.length > 0) {
+      // Move incomplete tasks to target sprint
+      incompleteTasks.forEach((task: TaskResponse) => {
+        moveTaskBetweenSprintsMutation.mutate({
+          fromSprintId: sprintId,
+          toSprintId: targetSprintId,
+          taskId: task.id,
+        })
+      })
+    } else {
+      // Just remove incomplete tasks from sprint (keep in backlog)
+      incompleteTasks.forEach((task: TaskResponse) => {
+        removeTaskFromSprintMutation.mutate({ sprintId, taskId: task.id })
+      })
+    }
+    
+    // Mark sprint as completed
+    updateSprintMutation.mutate({ sprintId, status: "completed" })
+    setShowCloseDialog(false)
+  }
+
+  const moveTaskBetweenSprintsMutation = useMoveTaskBetweenSprints()
+  const removeTaskFromSprintMutation = useRemoveTaskFromSprint()
 
   const handleDeleteSprint = () => {
     deleteSprintMutation.mutate(sprintId, {
@@ -372,7 +434,7 @@ export default function SprintDetailPage() {
               </Button>
             )}
             {sprint.status === "active" && (
-              <Button size="sm" variant="outline" onClick={handleCompleteSprint}>
+              <Button size="sm" variant="outline" onClick={handleCloseSprint}>
                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                 Complete Sprint
               </Button>
@@ -505,6 +567,109 @@ export default function SprintDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Close Sprint Dialog */}
+      <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Sprint</DialogTitle>
+            <DialogDescription>
+              {incompleteTasks.length > 0
+                ? `You have ${incompleteTasks.length} incomplete task${incompleteTasks.length > 1 ? "s" : ""} in this sprint. What would you like to do with them?`
+                : "Are you sure you want to complete this sprint?"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {incompleteTasks.length > 0 && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="closeOption"
+                    checked={closeOption === "backlog"}
+                    onChange={() => setCloseOption("backlog")}
+                    className="h-4 w-4"
+                  />
+                  <div>
+                    <div className="font-medium text-sm">Keep in backlog</div>
+                    <div className="text-xs text-muted-foreground">
+                      Tasks will be removed from this sprint but remain in their original lists
+                    </div>
+                  </div>
+                </label>
+                
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="closeOption"
+                    checked={closeOption === "move"}
+                    onChange={() => setCloseOption("move")}
+                    className="h-4 w-4"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-sm">Move to another sprint</div>
+                    <div className="text-xs text-muted-foreground">
+                      Transfer incomplete tasks to a different sprint
+                    </div>
+                  </div>
+                </label>
+                
+                {closeOption === "move" && (
+                  <div className="ml-7 mt-2">
+                    <Select value={targetSprintId} onValueChange={setTargetSprintId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select target sprint" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTargetSprints.length > 0 ? (
+                          availableTargetSprints.map((s: SprintResponse) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              <div className="flex items-center gap-2">
+                                <FolderKanban className="h-3.5 w-3.5" />
+                                {s.name}
+                                <Badge variant="outline" className="ml-1 text-[10px]">
+                                  {s.status}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-muted-foreground text-center">
+                            No other sprints available
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCloseDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmCloseSprint}
+              disabled={closeOption === "move" && !targetSprintId && incompleteTasks.length > 0}
+            >
+              {incompleteTasks.length > 0 && closeOption === "move" ? (
+                <>
+                  <ArrowRight className="h-4 w-4 mr-1" />
+                  Move & Complete
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 mr-1" />
+                  Complete Sprint
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

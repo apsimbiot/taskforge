@@ -158,3 +158,49 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: sprintId } = await params;
+
+    // Get sprint first
+    const sprint = await db.query.sprints.findFirst({
+      where: eq(sprints.id, sprintId),
+    });
+
+    if (!sprint) {
+      return NextResponse.json({ error: "Sprint not found" }, { status: 404 });
+    }
+
+    // Check membership and permissions
+    const membership = await db.query.workspaceMembers.findFirst({
+      where: and(
+        eq(workspaceMembers.workspaceId, sprint.workspaceId),
+        eq(workspaceMembers.userId, session.user.id)
+      ),
+    });
+
+    if (!membership || !["owner", "admin"].includes(membership.role)) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    }
+
+    // Delete sprint tasks first
+    await db.delete(sprintTasks).where(eq(sprintTasks.sprintId, sprintId));
+
+    // Delete sprint
+    await db.delete(sprints).where(eq(sprints.id, sprintId));
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting sprint:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

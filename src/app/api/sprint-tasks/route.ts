@@ -2,6 +2,53 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
 import { sprintTasks, sprints } from "@/db/schema"
 import { eq, and } from "drizzle-orm"
+import { z } from "zod"
+
+const moveTaskSchema = z.object({
+  fromSprintId: z.string().uuid(),
+  toSprintId: z.string().uuid(),
+  taskId: z.string().uuid(),
+})
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { fromSprintId, toSprintId, taskId } = moveTaskSchema.parse(body)
+
+    // Remove from old sprint first
+    await db
+      .delete(sprintTasks)
+      .where(
+        and(
+          eq(sprintTasks.sprintId, fromSprintId),
+          eq(sprintTasks.taskId, taskId)
+        )
+      )
+
+    // Add to new sprint (if not already there)
+    await db
+      .insert(sprintTasks)
+      .values({
+        sprintId: toSprintId,
+        taskId,
+      })
+      .onConflictDoNothing()
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Validation error", details: error.issues },
+        { status: 400 }
+      )
+    }
+    console.error("Error moving task between sprints:", error)
+    return NextResponse.json(
+      { error: "Failed to move task" },
+      { status: 500 }
+    )
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {

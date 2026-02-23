@@ -312,6 +312,18 @@ export async function removeTaskFromSprint(sprintId: string, taskId: string): Pr
   })
 }
 
+export async function moveTaskBetweenSprints(
+  fromSprintId: string,
+  toSprintId: string,
+  taskId: string
+): Promise<void> {
+  // First remove from old sprint, then add to new (ensures move behavior)
+  await fetchJSON(`/sprint-tasks/move`, {
+    method: "PUT",
+    body: JSON.stringify({ fromSprintId, toSprintId, taskId }),
+  })
+}
+
 // ── Notifications ─────────────────────────────────────────────────────────
 export interface NotificationResponse {
   id: string
