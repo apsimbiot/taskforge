@@ -688,7 +688,7 @@ export default function ListPage({
               <div>
                 {/* Table Header */}
                 <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
-                  <div className="w-8 flex-shrink-0" /> {/* Indent spacer for alignment with rows */}
+                  <div style={{ width: "8px" }} className="flex-shrink-0" /> {/* Indent spacer matching depth-0 rows */}
                   <Checkbox
                     checked={selectedTasks.size === flatTasks.length && flatTasks.length > 0}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
