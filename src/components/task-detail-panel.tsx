@@ -358,7 +358,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   ]
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div 
         className="bg-background rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
