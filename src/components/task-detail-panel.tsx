@@ -421,11 +421,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 placeholder="Task title"
               />
 
-              {/* Property Fields - Compact Grid Layout */}
-              <div className="space-y-0">
-                {/* Status + Priority (same row) */}
+              {/* Property Fields - Two Column Grid Layout */}
+              <div className="grid grid-cols-2 gap-x-8 gap-y-0">
+                {/* Column 1: Status */}
                 <div className="flex items-center py-2.5 border-b border-border/30">
-                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
                     <CircleCheckBig className="h-4 w-4" />
                     Status
                   </span>
@@ -441,7 +441,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       }
                     }}
                   >
-                    <SelectTrigger className="h-8 w-[160px]">
+                    <SelectTrigger className="h-8 flex-1">
                       <SelectValue placeholder="Select status">
                         {currentStatus && (
                           <div className="flex items-center gap-2">
@@ -468,7 +468,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6 flex items-center gap-2">
+                </div>
+
+                {/* Column 2: Priority */}
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
                     <Flag className="h-4 w-4" />
                     Priority
                   </span>
@@ -485,7 +489,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       }
                     }}
                   >
-                    <SelectTrigger className="h-8 w-[140px]">
+                    <SelectTrigger className="h-8 flex-1">
                       <SelectValue placeholder="Select priority">
                         <div className="flex items-center gap-2">
                           <div
