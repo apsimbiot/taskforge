@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog"
 import { RichTextEditor } from "./rich-text-editor"
 import { MarkdownRenderer } from "./markdown-renderer"
+import { SubtaskRow } from "./subtask-row"
 import {
   useTask,
   useUpdateTask,
@@ -1306,7 +1307,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
               <Separator />
 
-              {/* Subtasks - Full Task Display */}
+              {/* Subtasks - ClickUp Style */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -1321,123 +1322,39 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                   )}
                 </div>
 
+                {/* Rich Subtask Rows */}
                 {subtasksLoading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                   </div>
                 ) : (
-                  <div className="space-y-1.5 mb-3">
+                  <div className="space-y-1 mb-3">
                     {subtasks.map((subtask) => (
-                      <div
+                      <SubtaskRow
                         key={subtask?.id}
-                        className="flex items-center gap-2 group text-sm p-2 rounded hover:bg-muted/50 border border-transparent hover:border-border/50"
-                      >
-                        {/* Status indicator - clickable to cycle */}
-                        <button
-                          onClick={() => handleToggleSubtask(subtask)}
-                          className="flex-shrink-0 hover:scale-110 transition-transform"
-                          title={`Status: ${subtask.status || 'todo'}`}
-                        >
-                          <div
-                            className="w-3.5 h-3.5 rounded-full border-2"
-                            style={{
-                              borderColor: STATUS_COLORS[subtask.status || "todo"] || STATUS_COLORS.todo,
-                              backgroundColor: subtask.status === "done" ? STATUS_COLORS.done : "transparent",
-                            }}
-                          />
-                        </button>
-
-                        {/* Title - clickable - opens subtask in panel */}
-                        <button
-                          onClick={() => onTaskSelect?.(subtask?.id)}
-                          className={cn(
-                            "flex-1 text-left truncate cursor-pointer hover:text-primary transition-colors",
-                            subtask.status === "done" && "line-through text-muted-foreground"
-                          )}
-                          title={subtask.title}
-                        >
-                          {subtask.title}
-                        </button>
-
-                        {/* Priority badge */}
-                        {subtask.priority && subtask.priority !== "none" && (
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "text-[10px] h-5 px-1.5 flex-shrink-0",
-                              subtask.priority === "urgent" && "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
-                              subtask.priority === "high" && "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-                              subtask.priority === "medium" && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-                              subtask.priority === "low" && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                            )}
-                          >
-                            {subtask.priority}
-                          </Badge>
-                        )}
-
-                        {/* Assignee avatars - max 2 */}
-                        {subtask.assignees && subtask.assignees.length > 0 && (
-                          <div className="flex -space-x-1 flex-shrink-0">
-                            {subtask.assignees.slice(0, 2).map((assignee) => (
-                              <Avatar key={assignee.id} className="h-5 w-5 border border-background">
-                                <AvatarImage src={assignee.user.avatarUrl || undefined} />
-                                <AvatarFallback className="text-[8px]">
-                                  {getInitials(assignee.user.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                            ))}
-                            {subtask.assignees.length > 2 && (
-                              <div className="h-5 w-5 rounded-full bg-muted border border-background flex items-center justify-center text-[8px]">
-                                +{subtask.assignees.length - 2}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Due date */}
-                        {subtask.dueDate && (
-                          <span className={cn(
-                            "text-[10px] flex-shrink-0",
-                            new Date(subtask.dueDate) < new Date() ? "text-red-500 font-medium" : "text-muted-foreground"
-                          )}>
-                            {new Date(subtask.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          </span>
-                        )}
-
-                        {/* Menu */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-opacity">
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteSubtask(subtask?.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                        subtask={subtask}
+                        onClick={() => onTaskSelect?.(subtask?.id)}
+                        statuses={statuses}
+                      />
                     ))}
                   </div>
                 )}
-
-                <div className="flex gap-2">
-                  <Input
+                
+                {/* Add subtask input */}
+                <div className="flex items-center gap-2 mt-3">
+                  <Plus className="h-4 w-4 text-muted-foreground" />
+                  <input
                     value={newSubtask}
                     onChange={(e) => setNewSubtask(e.target.value)}
-                    placeholder="Add subtask..."
-                    className="h-8 text-sm"
-                    onKeyDown={(e) => e.key === "Enter" && handleAddSubtask()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newSubtask.trim()) {
+                        handleAddSubtask()
+                      }
+                    }}
+                    placeholder="Add a subtask..."
+                    className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground"
                   />
-                  <Button size="sm" onClick={handleAddSubtask} className="h-8" disabled={!newSubtask.trim()}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
                 </div>
               </div>
 
