@@ -304,6 +304,44 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     }
   }, [timerInterval])
 
+  // URL management for shareable task links
+  const [previousUrl, setPreviousUrl] = useState<string>("")
+  
+  useEffect(() => {
+    if (open && taskId && workspaceId) {
+      // Push URL when panel opens
+      const taskUrl = `/dashboard/workspaces/${workspaceId}/tasks/${taskId}`
+      // Only push if current URL is different (avoid duplicates in history)
+      if (!window.location.pathname.includes(taskId)) {
+        // Save current URL for when we close
+        setPreviousUrl(window.location.pathname)
+        window.history.pushState({ taskId }, "", taskUrl)
+      }
+    } else if (!open && previousUrl) {
+      // Restore URL when panel closes
+      window.history.pushState({}, "", previousUrl)
+      setPreviousUrl("")
+    }
+  }, [open, taskId, workspaceId, previousUrl])
+
+  // Handle browser back button
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.taskId) {
+        // User pressed back, close the panel
+        onClose()
+      }
+    }
+
+    if (open) {
+      window.addEventListener("popstate", handlePopState)
+    }
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState)
+    }
+  }, [open, onClose])
+
   const handleSave = useCallback(() => {
     if (!task) return
     updateTaskMutation.mutate({
