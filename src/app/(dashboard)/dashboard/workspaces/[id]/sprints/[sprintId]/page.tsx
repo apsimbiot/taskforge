@@ -123,32 +123,34 @@ function BurndownChart({
   return (
     <ResponsiveContainer width="100%" height={250}>
       <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 11, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 11, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
           allowDecimals={false}
         />
         <Tooltip
           contentStyle={{
-            background: "hsl(var(--background))",
-            border: "1px solid hsl(var(--border))",
+            background: "#1f2937",
+            border: "1px solid #374151",
             borderRadius: "6px",
             fontSize: "12px",
+            color: "#e5e7eb",
           }}
+          labelStyle={{ color: "#e5e7eb" }}
         />
-        <Legend />
+        <Legend wrapperStyle={{ color: "#e5e7eb" }} />
         <Line
           type="monotone"
           dataKey="ideal"
-          stroke="hsl(var(--muted-foreground))"
+          stroke="#9ca3af"
           strokeDasharray="5 5"
           dot={false}
           name="Ideal"
@@ -156,7 +158,7 @@ function BurndownChart({
         <Line
           type="monotone"
           dataKey="actual"
-          stroke="hsl(var(--primary))"
+          stroke="#3b82f6"
           strokeWidth={2}
           dot={false}
           name="Actual"
