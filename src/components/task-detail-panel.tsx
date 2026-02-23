@@ -360,7 +360,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div 
-        className="bg-background rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden flex animate-in fade-in zoom-in-95 duration-200"
+        className="bg-background rounded-lg shadow-2xl w-full max-w-7xl h-[90vh] overflow-hidden flex animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* LEFT SIDE - Main Content (~60%) */}
@@ -420,10 +420,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 placeholder="Task title"
               />
 
-              {/* Property Fields - Vertical List */}
+              {/* Property Fields - Compact Grid Layout */}
               <div className="space-y-0">
-                {/* Status */}
-                <PropertyRow label="Status">
+                {/* Status + Priority (same row) */}
+                <div className="flex items-center py-2 border-b border-border/30">
+                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0">Status</span>
                   <Select
                     value={status}
                     onValueChange={(value) => {
@@ -436,7 +437,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       }
                     }}
                   >
-                    <SelectTrigger className="h-8 w-[180px]">
+                    <SelectTrigger className="h-8 w-[160px]">
                       <SelectValue placeholder="Select status">
                         {currentStatus && (
                           <div className="flex items-center gap-2">
@@ -463,7 +464,46 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       ))}
                     </SelectContent>
                   </Select>
-                </PropertyRow>
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6">Priority</span>
+                  <Select
+                    value={priority}
+                    onValueChange={(value) => {
+                      const newPriority = value as Priority
+                      setPriority(newPriority)
+                      if (task) {
+                        updateTaskMutation.mutate({
+                          taskId: task.id,
+                          priority: newPriority,
+                        })
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <SelectValue placeholder="Select priority">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: priorityConfig?.dotColor }}
+                          />
+                          {priorityConfig?.label}
+                        </div>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRIORITIES.map((p) => (
+                        <SelectItem key={p.value} value={p.value}>
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: p.dotColor }}
+                            />
+                            {p.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Dates - Start & Due */}
                 <PropertyRow label="Dates">
@@ -526,8 +566,9 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* Time Tracker */}
-                <PropertyRow label="Track time">
+                {/* Track time + Time Estimate (same row) */}
+                <div className="flex items-center py-2 border-b border-border/30">
+                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0">Track time</span>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted text-sm font-mono min-w-[80px] justify-center">
                       <span className={cn("text-base", isTimerRunning && "text-green-500")}>
@@ -547,7 +588,19 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       <Square className="h-4 w-4" />
                     </Button>
                   </div>
-                </PropertyRow>
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6">Estimate</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      value={timeEstimate ?? ""}
+                      onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
+                      onBlur={handleSave}
+                      placeholder="minutes"
+                      className="h-8 w-[80px]"
+                    />
+                    <span className="text-xs text-muted-foreground">min</span>
+                  </div>
+                </div>
 
                 {/* Assignees */}
                 <PropertyRow label="Assignees">
@@ -629,47 +682,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* Priority */}
-                <PropertyRow label="Priority">
-                  <Select
-                    value={priority}
-                    onValueChange={(value) => {
-                      const newPriority = value as Priority
-                      setPriority(newPriority)
-                      if (task) {
-                        updateTaskMutation.mutate({
-                          taskId: task.id,
-                          priority: newPriority,
-                        })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-[140px]">
-                      <SelectValue placeholder="Select priority">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ backgroundColor: priorityConfig?.dotColor }}
-                          />
-                          {priorityConfig?.label}
-                        </div>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRIORITIES.map((p) => (
-                        <SelectItem key={p.value} value={p.value}>
-                          <div className="flex items-center gap-2">
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: p.dotColor }}
-                            />
-                            {p.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </PropertyRow>
+                {/* Priority is now combined with Status row above */}
 
                 {/* Tags */}
                 <PropertyRow label="Tags">
@@ -713,20 +726,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* Time Estimate */}
-                <PropertyRow label="Time Estimate">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={timeEstimate ?? ""}
-                      onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
-                      onBlur={handleSave}
-                      placeholder="minutes"
-                      className="h-8 w-[100px]"
-                    />
-                    <span className="text-xs text-muted-foreground">min</span>
-                  </div>
-                </PropertyRow>
+                {/* Time Estimate is now combined with Track time row above */}
 
                 {/* Custom Fields */}
                 <PropertyRow label="Custom Fields">
@@ -1171,7 +1171,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 function PropertyRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center py-2 border-b border-border/30">
-      <span className="w-32 text-sm text-muted-foreground flex-shrink-0">{label}</span>
+      <span className="w-28 text-sm text-muted-foreground flex-shrink-0">{label}</span>
       <div className="flex-1">{children}</div>
     </div>
   )
