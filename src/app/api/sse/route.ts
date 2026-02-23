@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server"
 import { auth } from "@/auth"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: NextRequest) {
   const session = await auth()
   
@@ -13,12 +15,12 @@ export async function GET(request: NextRequest) {
   // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
-      // Send initial connection message
       const encoder = new TextEncoder()
+      
+      // Send initial connection message
       controller.enqueue(encoder.encode(`event: connected\ndata: {"userId":"${userId}"}\n\n`))
 
-      // For now, we'll simulate SSE with a keepalive
-      // In production, you'd connect to a pub/sub system like Redis
+      // Keepalive every 30 seconds
       const interval = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`: keepalive\n\n`))
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no", // Disable nginx buffering
     },
   })
 }
