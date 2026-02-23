@@ -452,6 +452,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   activities: many(taskActivities),
   timeEntries: many(timeEntries),
   taskLabels: many(taskLabels),
+  attachments: many(taskAttachments),
 }));
 
 export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
@@ -489,6 +490,37 @@ export const taskActivitiesRelations = relations(
     }),
   })
 );
+
+// ─── Task Attachments ─────────────────────────────────────────────────────────
+export const taskAttachments = pgTable(
+  "task_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    filename: text("filename").notNull(),
+    fileKey: text("file_key").notNull(),
+    fileSize: integer("file_size").notNull(),
+    mimeType: text("mime_type").notNull(),
+    uploadedBy: uuid("uploaded_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("attachments_task_idx").on(t.taskId)]
+);
+
+export const taskAttachmentsRelations = relations(taskAttachments, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskAttachments.taskId],
+    references: [tasks.id],
+  }),
+  uploadedByUser: one(users, {
+    fields: [taskAttachments.uploadedBy],
+    references: [users.id],
+  }),
+}));
 
 export const customFieldDefinitionsRelations = relations(
   customFieldDefinitions,
@@ -732,3 +764,5 @@ export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 export type Form = typeof forms.$inferSelect;
 export type NewForm = typeof forms.$inferInsert;
+export type TaskAttachment = typeof taskAttachments.$inferSelect;
+export type NewTaskAttachment = typeof taskAttachments.$inferInsert;

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -65,6 +65,9 @@ import {
   useTaskSprint,
   useAssignTaskToSprint,
   useRemoveTaskFromAllSprints,
+  useTaskAttachments,
+  useUploadAttachment,
+  useDeleteAttachment,
 } from "@/hooks/useQueries"
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -202,6 +205,70 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const { data: currentSprint, isLoading: sprintLoading } = useTaskSprint(task?.id)
   const assignToSprintMutation = useAssignTaskToSprint()
   const removeFromSprintMutation = useRemoveTaskFromAllSprints()
+
+  // Attachment hooks
+  const { data: attachments = [], isLoading: attachmentsLoading } = useTaskAttachments(task?.id)
+  const uploadAttachmentMutation = useUploadAttachment()
+  const deleteAttachmentMutation = useDeleteAttachment()
+
+  // Attachment state
+  const [isDragging, setIsDragging] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Handle file upload
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || !task) return
+    setIsUploading(true)
+    try {
+      for (const file of Array.from(files)) {
+        await uploadAttachmentMutation.mutateAsync({ taskId: task.id, file })
+      }
+    } catch (error) {
+      console.error("Upload failed:", error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  // Handle drag and drop
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    handleFileUpload(e.dataTransfer.files)
+  }
+
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  // Check if file is image
+  const isImageFile = (mimeType: string): boolean => {
+    return mimeType.startsWith("image/")
+  }
+
+  // Handle delete attachment
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!task) return
+    try {
+      await deleteAttachmentMutation.mutateAsync({ taskId: task.id, attachmentId })
+    } catch (error) {
+      console.error("Delete failed:", error)
+    }
+  }
 
   // Populate form when task changes
   useEffect(() => {
@@ -1379,15 +1446,114 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
               <Separator />
 
-              {/* Attachments (placeholder) */}
+              {/* Attachments */}
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Paperclip className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Attachments</span>
+                  {attachments.length > 0 && (
+                    <Badge variant="secondary" className="h-5 text-xs">
+                      {attachments.length}
+                    </Badge>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-md">
-                  Coming soon
+
+                {/* Drop zone */}
+                <div
+                  className={cn(
+                    "border-2 border-dashed rounded-md p-4 text-center cursor-pointer transition-colors",
+                    isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-muted-foreground/50",
+                    isUploading && "opacity-50 pointer-events-none"
+                  )}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e.target.files)}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                  />
+                  {isUploading ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      Uploading...
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Drop files here or click to upload
+                    </div>
+                  )}
                 </div>
+
+                {/* Attachment list */}
+                {attachmentsLoading ? (
+                  <div className="mt-3 space-y-2">
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                  </div>
+                ) : attachments.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {attachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 group transition-colors"
+                      >
+                        {/* Thumbnail or icon */}
+                        {isImageFile(attachment.mimeType) ? (
+                          <div className="h-10 w-10 rounded overflow-hidden flex-shrink-0 bg-muted">
+                            <img
+                              src={attachment.url}
+                              alt={attachment.filename}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-10 w-10 rounded flex-shrink-0 bg-muted flex items-center justify-center">
+                            <FileText className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                        )}
+
+                        {/* File info */}
+                        <div className="flex-1 min-w-0">
+                          <a
+                            href={attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium hover:underline truncate block"
+                          >
+                            {attachment.filename}
+                          </a>
+                          <span className="text-xs text-muted-foreground">
+                            {formatFileSize(attachment.fileSize)}
+                          </span>
+                        </div>
+
+                        {/* Delete button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteAttachment(attachment.id)
+                          }}
+                          disabled={deleteAttachmentMutation.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-3 text-xs text-muted-foreground text-center">
+                    No attachments yet
+                  </div>
+                )}
               </div>
             </div>
           </div>

@@ -694,3 +694,55 @@ export function useRemoveTaskFromAllSprints() {
     },
   })
 }
+
+// ── Task Attachments Hooks ─────────────────────────────────────────────────
+
+export interface TaskAttachmentResponse {
+  id: string;
+  taskId: string;
+  filename: string;
+  fileKey: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedBy: string;
+  createdAt: string;
+  url: string;
+}
+
+export function useTaskAttachments(taskId: string | undefined) {
+  return useQuery<TaskAttachmentResponse[]>({
+    queryKey: ["task-attachments", taskId],
+    queryFn: () => fetch(`/api/tasks/${taskId}/attachments`).then(r => r.json()),
+    enabled: !!taskId,
+  })
+}
+
+export function useUploadAttachment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ taskId, file }: { taskId: string; file: File }) => {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(`/api/tasks/${taskId}/attachments`, { method: "POST", body: formData })
+      if (!res.ok) throw new Error("Upload failed")
+      return res.json()
+    },
+    onSuccess: (_data, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] })
+    },
+  })
+}
+
+export function useDeleteAttachment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ taskId, attachmentId }: { taskId: string; attachmentId: string }) => {
+      const res = await fetch(`/api/tasks/${taskId}/attachments?attachmentId=${attachmentId}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
+      return res.json()
+    },
+    onSuccess: (_data, { taskId }) => {
+      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] })
+    },
+  })
+}
