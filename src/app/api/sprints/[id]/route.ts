@@ -83,7 +83,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    const tasksWithDetails = sprintTaskRelations.map((st) => st.task);
+    const tasksWithDetails = sprintTaskRelations.map((st) => {
+      const task = st.task
+      return {
+        ...task,
+        // Ensure dates are ISO strings
+        dueDate: task.dueDate ? new Date(task.dueDate).toISOString() : null,
+        createdAt: task.createdAt ? new Date(task.createdAt).toISOString() : task.createdAt,
+        updatedAt: task.updatedAt ? new Date(task.updatedAt).toISOString() : task.updatedAt,
+      }
+    });
 
     return NextResponse.json({ sprint, tasks: tasksWithDetails });
   } catch (error) {
