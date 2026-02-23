@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -176,6 +176,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   // Tags (mock - would need tag API)
   const [tags, setTags] = useState<string[]>([])
   const [newTag, setNewTag] = useState("")
+  const [collapseEmpty, setCollapseEmpty] = useState(false)
 
   // Custom fields dialog
   const [isCustomFieldDialogOpen, setIsCustomFieldDialogOpen] = useState(false)
@@ -423,8 +424,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
               {/* Property Fields - Compact Grid Layout */}
               <div className="space-y-0">
                 {/* Status + Priority (same row) */}
-                <div className="flex items-center py-2 border-b border-border/30">
-                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0">Status</span>
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                    <CircleCheckBig className="h-4 w-4" />
+                    Status
+                  </span>
                   <Select
                     value={status}
                     onValueChange={(value) => {
@@ -464,7 +468,10 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6">Priority</span>
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6 flex items-center gap-2">
+                    <Flag className="h-4 w-4" />
+                    Priority
+                  </span>
                   <Select
                     value={priority}
                     onValueChange={(value) => {
@@ -506,7 +513,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 </div>
 
                 {/* Dates - Start & Due */}
-                <PropertyRow label="Dates">
+                <PropertyRow label="Dates" icon={<Calendar className="h-4 w-4" />}>
                   <div className="flex items-center gap-2">
                     <Popover>
                       <PopoverTrigger asChild>
@@ -567,8 +574,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 </PropertyRow>
 
                 {/* Track time + Time Estimate (same row) */}
-                <div className="flex items-center py-2 border-b border-border/30">
-                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0">Track time</span>
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    Track time
+                  </span>
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted text-sm font-mono min-w-[80px] justify-center">
                       <span className={cn("text-base", isTimerRunning && "text-green-500")}>
@@ -588,7 +598,10 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                       <Square className="h-4 w-4" />
                     </Button>
                   </div>
-                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6">Estimate</span>
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Estimate
+                  </span>
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
@@ -603,7 +616,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 </div>
 
                 {/* Assignees */}
-                <PropertyRow label="Assignees">
+                <PropertyRow label="Assignees" icon={<Users className="h-4 w-4" />}>
                   <div className="flex items-center gap-2 flex-wrap">
                     {assigneesLoading ? (
                       <Skeleton className="h-6 w-20" />
@@ -685,7 +698,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 {/* Priority is now combined with Status row above */}
 
                 {/* Tags */}
-                <PropertyRow label="Tags">
+                <PropertyRow label="Tags" icon={<Tag className="h-4 w-4" />}>
                   <div className="flex items-center gap-2 flex-wrap">
                     {tags.map((tag, idx) => (
                       <Badge
@@ -729,7 +742,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 {/* Time Estimate is now combined with Track time row above */}
 
                 {/* Custom Fields */}
-                <PropertyRow label="Custom Fields">
+                <PropertyRow label="Custom Fields" icon={<Gauge className="h-4 w-4" />}>
                   <div className="flex-1 space-y-2">
                     {customFieldsLoading ? (
                       <Skeleton className="h-6 w-full" />
@@ -853,6 +866,15 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                     </Dialog>
                   </div>
                 </PropertyRow>
+
+                {/* Collapse empty fields toggle */}
+                <button
+                  onClick={() => setCollapseEmpty(!collapseEmpty)}
+                  className="flex items-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                >
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", collapseEmpty && "-rotate-90")} />
+                  {collapseEmpty ? "Show empty fields" : "Collapse empty fields"}
+                </button>
               </div>
 
               <Separator />
@@ -1168,10 +1190,13 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 }
 
 // Helper Components
-function PropertyRow({ label, children }: { label: string; children: React.ReactNode }) {
+function PropertyRow({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex items-center py-2 border-b border-border/30">
-      <span className="w-28 text-sm text-muted-foreground flex-shrink-0">{label}</span>
+    <div className="flex items-center py-2.5 border-b border-border/30">
+      <span className="w-28 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+        {icon}
+        {label}
+      </span>
       <div className="flex-1">{children}</div>
     </div>
   )
