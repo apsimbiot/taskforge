@@ -328,9 +328,9 @@ export default function SprintDetailPage() {
   }, [tasks])
 
   const statusColors = {
-    planned: "bg-gray-100 text-gray-700",
-    active: "bg-green-100 text-green-700",
-    completed: "bg-blue-100 text-blue-700",
+    planned: "bg-slate-200 text-slate-800",
+    active: "bg-green-200 text-green-800",
+    completed: "bg-blue-200 text-blue-800",
   }
 
   const handleStartSprint = () => {
@@ -468,18 +468,18 @@ export default function SprintDetailPage() {
             </DropdownMenu>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-sm text-muted-foreground ml-11">
-          <span className="flex items-center gap-1.5">
+        <div className="flex items-center gap-4 text-sm ml-11">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
             <Calendar className="h-3.5 w-3.5" />
-            {format(startDate, "MMM d")} – {format(endDate, "MMM d, yyyy")}
+            <span className="text-foreground">{format(startDate, "MMM d")} – {format(endDate, "MMM d, yyyy")}</span>
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Sprint ended"}
+            <span className="text-foreground">{daysRemaining > 0 ? `${daysRemaining} days remaining` : "Sprint ended"}</span>
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            {doneTasks.length}/{tasks.length} tasks done
+            <span className="text-foreground">{doneTasks.length}/{tasks.length} tasks done</span>
           </span>
         </div>
       </div>
@@ -512,7 +512,7 @@ export default function SprintDetailPage() {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-muted-foreground">Tasks Completed</span>
-                  <span className="font-medium">{taskProgress}%</span>
+                  <span className="font-medium text-foreground">{taskProgress}%</span>
                 </div>
                 <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
                   <div
@@ -524,7 +524,7 @@ export default function SprintDetailPage() {
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-muted-foreground">Time Elapsed</span>
-                  <span className="font-medium">{Math.round(timeProgress)}%</span>
+                  <span className="font-medium text-foreground">{Math.round(timeProgress)}%</span>
                 </div>
                 <div className="h-2.5 bg-secondary rounded-full overflow-hidden">
                   <div
@@ -535,7 +535,7 @@ export default function SprintDetailPage() {
               </div>
               <div className="grid grid-cols-3 gap-4 pt-2">
                 <div className="text-center">
-                  <div className="text-xl font-bold">{tasks.length}</div>
+                  <div className="text-xl font-bold text-foreground">{tasks.length}</div>
                   <div className="text-[10px] text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center">
