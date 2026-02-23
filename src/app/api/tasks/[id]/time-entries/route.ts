@@ -152,6 +152,15 @@ export async function POST(
       const totalTimeSpent = entries.reduce((sum, e) => sum + (e.duration || 0), 0);
       await db.update(tasks).set({ timeSpent: totalTimeSpent }).where(eq(tasks.id, taskId));
 
+      // Log activity
+      await db.insert(taskActivities).values({
+        taskId,
+        userId: session.user.id,
+        action: "stopped_timer",
+        field: "time_tracking",
+        newValue: `${Math.floor(duration / 60)} minutes`,
+      });
+
       return NextResponse.json({ timeEntry: updatedEntry });
     }
 
@@ -182,6 +191,14 @@ export async function POST(
           description: validatedData.description,
         })
         .returning();
+
+      // Log activity
+      await db.insert(taskActivities).values({
+        taskId,
+        userId: session.user.id,
+        action: "started_timer",
+        field: "time_tracking",
+      });
 
       return NextResponse.json({ timeEntry: entry }, { status: 201 });
     }

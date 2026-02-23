@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { taskAttachments } from "@/db/schema";
+import { taskAttachments, taskActivities } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
@@ -157,6 +157,15 @@ export async function POST(
         createdAt: taskAttachments.createdAt,
       });
 
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "added_attachment",
+      field: "attachment",
+      newValue: file.name,
+    });
+
     return NextResponse.json({
       ...attachment,
       url: `/api/files/${attachment.fileKey}`,
@@ -193,6 +202,7 @@ export async function DELETE(
     const [attachment] = await db
       .select({
         id: taskAttachments.id,
+        filename: taskAttachments.filename,
         fileKey: taskAttachments.fileKey,
       })
       .from(taskAttachments)
@@ -214,6 +224,15 @@ export async function DELETE(
     await db
       .delete(taskAttachments)
       .where(eq(taskAttachments.id, attachmentId));
+
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "removed_attachment",
+      field: "attachment",
+      oldValue: attachment.filename,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

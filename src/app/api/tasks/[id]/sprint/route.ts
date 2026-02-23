@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { sprintTasks, sprints, tasks, workspaceMembers, lists, spaces } from "@/db/schema";
+import { sprintTasks, sprints, tasks, workspaceMembers, lists, spaces, taskActivities } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
@@ -127,6 +127,15 @@ export async function PUT(
       taskId,
     });
 
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "updated",
+      field: "sprint",
+      newValue: sprint.name,
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -160,8 +169,31 @@ export async function DELETE(
       return NextResponse.json({ error: "Task not found or access denied" }, { status: 404 });
     }
 
+    // Get current sprint name before deleting
+    const currentSprint = await db
+      .select({
+        sprintId: sprintTasks.sprintId,
+        sprintName: sprints.name,
+      })
+      .from(sprintTasks)
+      .innerJoin(sprints, eq(sprintTasks.sprintId, sprints.id))
+      .where(eq(sprintTasks.taskId, taskId))
+      .limit(1);
+
+    const sprintName = currentSprint[0]?.sprintName || "sprint";
+
     // Delete all sprintTasks entries for this taskId
     await db.delete(sprintTasks).where(eq(sprintTasks.taskId, taskId));
+
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "updated",
+      field: "sprint",
+      oldValue: sprintName,
+      newValue: null,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

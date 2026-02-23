@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, lists, spaces, workspaceMembers, taskComments, taskAssignees } from "@/db/schema";
+import { tasks, lists, spaces, workspaceMembers, taskComments, taskAssignees, taskActivities } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { createNotification, notifyMentions } from "@/lib/notifications";
@@ -106,6 +106,15 @@ export async function POST(
         content: validatedData.content,
       })
       .returning();
+
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "added_comment",
+      field: "comment",
+      newValue: validatedData.content.substring(0, 100) || "comment",
+    });
 
     // Fetch user details
     const commentWithUser = await db.query.taskComments.findFirst({

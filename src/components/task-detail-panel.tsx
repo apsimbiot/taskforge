@@ -75,7 +75,7 @@ import {
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { extractTextFromTiptap } from "@/lib/tiptap"
-import type { TaskResponse, StatusResponse, WorkspaceMemberResponse, SubtaskResponse, CommentResponse } from "@/lib/api"
+import type { TaskResponse, StatusResponse, WorkspaceMemberResponse, SubtaskResponse, CommentResponse, ActivityResponse } from "@/lib/api"
 
 interface TaskDetailPanelProps {
   task: TaskResponse | null | undefined
@@ -133,6 +133,72 @@ function getInitials(name: string | null): string {
     .join("")
     .toUpperCase()
     .slice(0, 2)
+}
+
+function getActivityActionText(activity: ActivityResponse): string {
+  const { action, field, oldValue, newValue } = activity
+  switch (action) {
+    case "created":
+      return "created this task"
+    case "updated":
+      if (field) {
+        return `changed ${field} from ${oldValue || "empty"} to ${newValue || "empty"}`
+      }
+      return `updated task`
+    case "added_subtask":
+      return `added subtask ${newValue || ""}`
+    case "added_dependency":
+      return "added dependency"
+    case "removed_dependency":
+      return "removed dependency"
+    case "added_comment":
+      return "added a comment"
+    case "added_attachment":
+      return `uploaded ${newValue || "file"}`
+    case "removed_attachment":
+      return `deleted attachment ${oldValue || "file"}`
+    case "added_assignee":
+      return `assigned ${newValue || "user"}`
+    case "removed_assignee":
+      return `unassigned ${oldValue || "user"}`
+    case "started_timer":
+      return "started time tracking"
+    case "stopped_timer":
+      return `stopped time tracking (${newValue || "0 minutes"})`
+    default:
+      return action
+  }
+}
+
+function getActivityIcon(action: string): React.ReactNode {
+  switch (action) {
+    case "created":
+      return <Plus className="h-3 w-3" />
+    case "updated":
+      return <Edit3 className="h-3 w-3" />
+    case "added_subtask":
+      return <Plus className="h-3 w-3" />
+    case "added_dependency":
+      return <Link2 className="h-3 w-3" />
+    case "removed_dependency":
+      return <Link2 className="h-3 w-3" />
+    case "added_comment":
+      return <MessageSquare className="h-3 w-3" />
+    case "added_attachment":
+      return <Paperclip className="h-3 w-3" />
+    case "removed_attachment":
+      return <Trash2 className="h-3 w-3" />
+    case "added_assignee":
+      return <Users className="h-3 w-3" />
+    case "removed_assignee":
+      return <Users className="h-3 w-3" />
+    case "started_timer":
+      return <Play className="h-3 w-3" />
+    case "stopped_timer":
+      return <Pause className="h-3 w-3" />
+    default:
+      return <Clock className="h-3 w-3" />
+  }
 }
 
 export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, statuses, workspaceId }: TaskDetailPanelProps) {
@@ -1525,25 +1591,26 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
           {/* Activity Feed - Scrollable */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Task Created Event */}
-            <ActivityItem
-              avatar={null}
-              name="System"
-              action="created this task"
-              timestamp={task.createdAt}
-              icon={<Plus className="h-3 w-3" />}
-            />
-
-            {/* Status Change Event (mock - would come from activity log) */}
-            {currentStatus && (
-              <ActivityItem
-                avatar={null}
-                name="System"
-                action={`changed status to ${currentStatus.name}`}
-                timestamp={task.updatedAt}
-                icon={<ArrowUpRight className="h-3 w-3" />}
-              />
-            )}
+            {/* Real Activity History */}
+            {activityTab === "all" || activityTab === "history" ? (
+              currentTask?.activities && currentTask.activities.length > 0 ? (
+                currentTask.activities.map((activity) => {
+                  const actionText = getActivityActionText(activity)
+                  return (
+                    <ActivityItem
+                      key={activity.id}
+                      avatar={null}
+                      name={activity.user?.name || "Unknown"}
+                      action={actionText}
+                      timestamp={activity.createdAt}
+                      icon={getActivityIcon(activity.action)}
+                    />
+                  )
+                })
+              ) : (
+                <p className="text-xs text-muted-foreground italic text-center py-4">No activity yet</p>
+              )
+            ) : null}
 
             {/* Comments */}
             {activityTab === "all" || activityTab === "comments" ? (

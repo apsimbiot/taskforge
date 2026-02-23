@@ -66,6 +66,11 @@ export async function fetchSpaces(workspaceId: string): Promise<SpaceResponse[]>
   return data.spaces
 }
 
+export async function fetchSpace(spaceId: string): Promise<SpaceResponse> {
+  const data = await fetchJSON<{ space: SpaceResponse }>(`/spaces/${spaceId}`)
+  return data.space
+}
+
 export async function createSpace(
   workspaceId: string,
   data: { name: string; color?: string; icon?: string; description?: string }
@@ -121,6 +126,11 @@ export async function fetchSpaceLists(spaceId: string): Promise<ListResponse[]> 
   return data.lists
 }
 
+export async function fetchList(listId: string): Promise<ListResponse> {
+  const data = await fetchJSON<{ list: ListResponse }>(`/lists/${listId}`)
+  return data.list
+}
+
 export async function createList(
   folderId: string,
   data: { name: string; spaceId: string }
@@ -132,6 +142,21 @@ export async function createList(
 }
 
 // ── Tasks ───────────────────────────────────────────────────────────────────
+export interface ActivityResponse {
+  id: string
+  taskId: string
+  userId: string
+  action: string
+  field: string | null
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
+  user: {
+    id: string
+    name: string
+  }
+}
+
 export interface TaskResponse {
   id: string
   listId: string
@@ -148,6 +173,7 @@ export interface TaskResponse {
   parentTaskId: string | null
   createdAt: string
   updatedAt: string
+  activities?: ActivityResponse[]
 }
 
 export async function fetchTasks(listId: string): Promise<TaskResponse[]> {

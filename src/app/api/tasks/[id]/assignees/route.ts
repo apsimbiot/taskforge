@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, lists, spaces, workspaceMembers, taskAssignees, users } from "@/db/schema";
+import { tasks, lists, spaces, workspaceMembers, taskAssignees, users, taskActivities } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { createNotification } from "@/lib/notifications";
@@ -151,6 +151,15 @@ export async function POST(
       entityId: taskId,
     });
 
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "added_assignee",
+      field: "assignee",
+      newValue: assignedUser?.name || assignedUser?.email || "user",
+    });
+
     return NextResponse.json({ assignee: { ...assignee, user: assignedUser } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -191,6 +200,16 @@ export async function DELETE(
       return NextResponse.json({ error: "userId is required" }, { status: 400 });
     }
 
+    // Get the removed user details for activity log
+    const removedUser = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
     await db
       .delete(taskAssignees)
       .where(
@@ -199,6 +218,15 @@ export async function DELETE(
           eq(taskAssignees.userId, userId)
         )
       );
+
+    // Log activity
+    await db.insert(taskActivities).values({
+      taskId,
+      userId: session.user.id,
+      action: "removed_assignee",
+      field: "assignee",
+      oldValue: removedUser?.name || removedUser?.email || "user",
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
