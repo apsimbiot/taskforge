@@ -324,23 +324,17 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     }
   }, [open, taskId, workspaceId, previousUrl])
 
-  // Handle browser back button
+  // Handle browser back button — close panel when URL no longer has taskId
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      if (event.state?.taskId) {
-        // User pressed back, close the panel
+    const handlePopState = () => {
+      if (open && taskId && !window.location.pathname.includes(taskId)) {
         onClose()
       }
     }
 
-    if (open) {
-      window.addEventListener("popstate", handlePopState)
-    }
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState)
-    }
-  }, [open, onClose])
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [open, taskId, onClose])
 
   const handleSave = useCallback(() => {
     if (!task) return
