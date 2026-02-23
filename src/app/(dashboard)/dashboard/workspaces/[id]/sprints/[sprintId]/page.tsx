@@ -189,10 +189,10 @@ function SprintTaskCard({
   const removeFromSprint = useRemoveTaskFromSprint()
 
   const priorityColors: Record<string, string> = {
-    urgent: "bg-red-100 text-red-700 border-red-200",
-    high: "bg-orange-100 text-orange-700 border-orange-200",
-    medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    low: "bg-green-100 text-green-700 border-green-200",
+    urgent: "bg-red-200 text-red-800 border-red-300",
+    high: "bg-orange-200 text-orange-800 border-orange-300",
+    medium: "bg-yellow-200 text-yellow-800 border-yellow-300",
+    low: "bg-green-200 text-green-800 border-green-300",
   }
 
   return (
@@ -470,16 +470,16 @@ export default function SprintDetailPage() {
         </div>
         <div className="flex items-center gap-4 text-sm ml-11">
           <span className="flex items-center gap-1.5 text-muted-foreground">
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="text-foreground">{format(startDate, "MMM d")} – {format(endDate, "MMM d, yyyy")}</span>
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>{format(startDate, "MMM d")} – {format(endDate, "MMM d, yyyy")}</span>
           </span>
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
-            <span className="text-foreground">{daysRemaining > 0 ? `${daysRemaining} days remaining` : "Sprint ended"}</span>
+            <span>{daysRemaining > 0 ? `${daysRemaining} days remaining` : "Sprint ended"}</span>
           </span>
           <span className="flex items-center gap-1.5 text-muted-foreground">
             <CheckCircle2 className="h-3.5 w-3.5" />
-            <span className="text-foreground">{doneTasks.length}/{tasks.length} tasks done</span>
+            <span>{doneTasks.length}/{tasks.length} tasks done</span>
           </span>
         </div>
       </div>
