@@ -43,7 +43,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { MarkdownEditor } from "./markdown-editor"
+import { RichTextEditor } from "./rich-text-editor"
 import { MarkdownRenderer } from "./markdown-renderer"
 import {
   useUpdateTask,
@@ -150,7 +150,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const { data: workspaceMembers = [] } = useWorkspaceMembers(workspaceId)
 
   const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
+  const [description, setDescription] = useState<Record<string, unknown> | null>(null)
   const [status, setStatus] = useState("")
   const [priority, setPriority] = useState<Priority>("none")
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
@@ -172,7 +172,8 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState("")
 
   // Comment input
-  const [newComment, setNewComment] = useState("")
+  const [newComment, setNewComment] = useState<Record<string, unknown> | null>(null)
+  const [newCommentText, setNewCommentText] = useState("")
   const [isCommentPreview, setIsCommentPreview] = useState(false)
 
   // Assignee picker
@@ -206,7 +207,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
   useEffect(() => {
     if (task) {
       setTitle(task.title)
-      setDescription(extractTextFromTiptap(task.description))
+      setDescription(task.description as Record<string, unknown> | null)
       setStatus(task.status || "todo")
       setPriority((task.priority as Priority) || "none")
       setDueDate(task.dueDate ? new Date(task.dueDate) : undefined)
@@ -229,7 +230,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
     updateTaskMutation.mutate({
       taskId: task.id,
       title,
-      description,
+      description: (description ?? undefined) as string | Record<string, unknown> | undefined,
       status,
       priority,
       dueDate: dueDate ? dueDate.toISOString() : undefined,
@@ -317,12 +318,13 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
 
   // Comment handlers
   const handleAddComment = () => {
-    if (!newComment.trim() || !task) return
+    if (!newCommentText.trim() || !task) return
     createCommentMutation.mutate({
       taskId: task.id,
-      content: newComment.trim(),
+      content: newCommentText.trim(),
     })
-    setNewComment("")
+    setNewComment(null)
+    setNewCommentText("")
     setIsCommentPreview(false)
   }
 
@@ -1215,12 +1217,11 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 <label className="text-sm font-medium text-muted-foreground mb-2 block">
                   Description
                 </label>
-                <MarkdownEditor
-                  value={description}
-                  onChange={setDescription}
-                  onBlur={handleSave}
+                <RichTextEditor
+                  content={description}
+                  onChange={(json) => { setDescription(json); }}
                   placeholder="Add a description..."
-                  minHeight="200px"
+                  minHeight="120px"
                 />
               </div>
 
@@ -1469,20 +1470,14 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
               <div className="flex-1 min-w-0">
                 {isCommentPreview ? (
                   <div className="border rounded-md p-2 min-h-[60px] max-h-[150px] overflow-auto bg-muted/30">
-                    <MarkdownRenderer content={newComment} />
+                    <MarkdownRenderer content={newCommentText} />
                   </div>
                 ) : (
-                  <Textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
+                  <RichTextEditor
+                    content={newComment}
+                    onChange={(json) => setNewComment(json)}
                     placeholder="Write a comment..."
-                    className="min-h-[60px] resize-none text-sm"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey && newComment.trim()) {
-                        e.preventDefault()
-                        handleAddComment()
-                      }
-                    }}
+                    minHeight="60px"
                   />
                 )}
                 <div className="flex items-center justify-between mt-2">
@@ -1505,7 +1500,7 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   <Button
                     size="sm"
                     onClick={handleAddComment}
-                    disabled={!newComment.trim()}
+                    disabled={!newCommentText.trim()}
                     className="h-7"
                   >
                     Send

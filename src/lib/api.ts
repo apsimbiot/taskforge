@@ -176,7 +176,7 @@ export async function updateTask(
   taskId: string,
   data: Partial<{
     title: string
-    description: string
+    description: string | Record<string, unknown>
     status: string
     priority: string
     dueDate: string

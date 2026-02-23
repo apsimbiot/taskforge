@@ -166,3 +166,59 @@
     border-color: var(--status-blue);
   }
 }
+
+/* TipTap Editor Styles */
+.tiptap {
+  outline: none;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
+.tiptap h2 { font-size: 1.25rem; font-weight: 600; margin: 0.4rem 0; }
+.tiptap h3 { font-size: 1.1rem; font-weight: 600; margin: 0.3rem 0; }
+.tiptap p { margin: 0.25rem 0; }
+.tiptap ul, .tiptap ol { padding-left: 1.5rem; margin: 0.25rem 0; }
+.tiptap li { margin: 0.1rem 0; }
+.tiptap blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 1rem; margin: 0.5rem 0; color: hsl(var(--muted-foreground)); }
+.tiptap code { background: hsl(var(--muted)); padding: 0.15rem 0.3rem; border-radius: 0.25rem; font-size: 0.875rem; }
+.tiptap pre { background: hsl(var(--muted)); padding: 0.75rem 1rem; border-radius: 0.5rem; margin: 0.5rem 0; overflow-x: auto; }
+.tiptap pre code { background: none; padding: 0; }
+.tiptap img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0; }
+.tiptap a { color: hsl(var(--primary)); text-decoration: underline; }
+.tiptap hr { border-color: hsl(var(--border)); margin: 1rem 0; }
+
+/* TipTap Editor Styles */
+.tiptap {
+  outline: none;
+  padding: 0.75rem;
+  min-height: 150px;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
+
+.tiptap h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
+.tiptap h2 { font-size: 1.25rem; font-weight: 600; margin: 0.4rem 0; }
+.tiptap h3 { font-size: 1.1rem; font-weight: 600; margin: 0.3rem 0; }
+.tiptap p { margin: 0.25rem 0; }
+.tiptap ul, .tiptap ol { padding-left: 1.5rem; margin: 0.25rem 0; }
+.tiptap li { margin: 0.1rem 0; }
+.tiptap blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 1rem; margin: 0.5rem 0; color: hsl(var(--muted-foreground)); }
+.tiptap code { background: hsl(var(--muted)); padding: 0.15rem 0.3rem; border-radius: 0.25rem; font-size: 0.875rem; }
+.tiptap pre { background: hsl(var(--muted)); padding: 0.75rem 1rem; border-radius: 0.5rem; margin: 0.5rem 0; overflow-x: auto; }
+.tiptap pre code { background: none; padding: 0; }
+.tiptap img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.5rem 0; }
+.tiptap a { color: hsl(var(--primary)); text-decoration: underline; }
+.tiptap hr { border-color: hsl(var(--border)); margin: 1rem 0; }

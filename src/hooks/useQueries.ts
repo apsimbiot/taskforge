@@ -217,7 +217,7 @@ export function useUpdateTask() {
     }: {
       taskId: string
       title?: string
-      description?: string
+      description?: string | Record<string, unknown>
       status?: string
       priority?: string
       dueDate?: string
