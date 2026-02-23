@@ -517,19 +517,23 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                 </div>
 
                 {/* Dates - Start & Due */}
-                <PropertyRow label="Dates" icon={<Calendar className="h-4 w-4" />}>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Dates
+                  </span>
+                  <div className="flex items-center gap-2 flex-1">
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "h-8 w-[130px] justify-start text-left font-normal",
+                            "h-8 flex-1 justify-start text-left font-normal",
                             !startDate && "text-muted-foreground"
                           )}
                         >
                           <Calendar className="mr-2 h-4 w-4" />
-                          {startDate ? startDate.toLocaleDateString() : "Start date"}
+                          {startDate ? startDate.toLocaleDateString() : "Start"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -549,12 +553,12 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "h-8 w-[130px] justify-start text-left font-normal",
+                            "h-8 flex-1 justify-start text-left font-normal",
                             !dueDate && "text-muted-foreground"
                           )}
                         >
                           <Calendar className="mr-2 h-4 w-4" />
-                          {dueDate ? dueDate.toLocaleDateString() : "Due date"}
+                          {dueDate ? dueDate.toLocaleDateString() : "Due"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -574,48 +578,6 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                         />
                       </PopoverContent>
                     </Popover>
-                  </div>
-                </PropertyRow>
-
-                {/* Track time + Time Estimate (same row) */}
-                <div className="flex items-center py-2.5 border-b border-border/30">
-                  <span className="w-28 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
-                    <Timer className="h-4 w-4" />
-                    Track time
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted text-sm font-mono min-w-[80px] justify-center">
-                      <span className={cn("text-base", isTimerRunning && "text-green-500")}>
-                        {formatTimer(timerSeconds)}
-                      </span>
-                    </div>
-                    {isTimerRunning ? (
-                      <Button variant="outline" size="icon" onClick={handlePauseTimer} className="h-8 w-8">
-                        <Pause className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button variant="outline" size="icon" onClick={handleStartTimer} className="h-8 w-8">
-                        <Play className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button variant="outline" size="icon" onClick={handleStopTimer} className="h-8 w-8">
-                      <Square className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 ml-6 flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Estimate
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      value={timeEstimate ?? ""}
-                      onChange={(e) => setTimeEstimate(e.target.value ? parseInt(e.target.value) : null)}
-                      onBlur={handleSave}
-                      placeholder="minutes"
-                      className="h-8 w-[80px]"
-                    />
-                    <span className="text-xs text-muted-foreground">min</span>
                   </div>
                 </div>
 
@@ -699,9 +661,32 @@ export function TaskDetailPanel({ task, open, onClose, statuses, workspaceId }: 
                   </div>
                 </PropertyRow>
 
-                {/* Priority is now combined with Status row above */}
-
-                {/* Tags */}
+                {/* Track time + Estimate */}
+                <div className="flex items-center py-2.5 border-b border-border/30">
+                  <span className="w-24 text-sm text-muted-foreground flex-shrink-0 flex items-center gap-2">
+                    <Timer className="h-4 w-4" />
+                    Track
+                  </span>
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted text-sm font-mono min-w-[70px] justify-center">
+                      <span className={cn("text-base", isTimerRunning && "text-green-500")}>
+                        {formatTimer(timerSeconds)}
+                      </span>
+                    </div>
+                    {isTimerRunning ? (
+                      <Button variant="outline" size="icon" onClick={handlePauseTimer} className="h-8 w-8">
+                        <Pause className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button variant="outline" size="icon" onClick={handleStartTimer} className="h-8 w-8">
+                        <Play className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button variant="outline" size="icon" onClick={handleStopTimer} className="h-8 w-8">
+                      <Square className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
                 <PropertyRow label="Tags" icon={<Tag className="h-4 w-4" />}>
                   <div className="flex items-center gap-2 flex-wrap">
                     {tags.map((tag, idx) => (
