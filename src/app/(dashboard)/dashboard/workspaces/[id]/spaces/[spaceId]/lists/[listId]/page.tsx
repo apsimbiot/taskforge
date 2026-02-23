@@ -22,6 +22,7 @@ import { useTaskPanel } from "@/store/useTaskPanel"
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee, useList } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
+import { buildTaskTree, flattenTree, type TaskTreeNode } from "@/lib/task-tree"
 
 // Import new list view components
 import { GroupByDropdown } from "@/components/list-view/group-by-dropdown"
@@ -206,6 +207,7 @@ export default function ListPage({
   })
   const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set())
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set())
   const { selectedTaskId, setSelectedTask, isOpen: isTaskPanelOpen, close: closeTaskPanel } = useTaskPanel()
 
   // Sync panel state with browser back/forward
@@ -232,8 +234,8 @@ export default function ListPage({
     : DEFAULT_STATUSES
   const availablePriorities = DEFAULT_PRIORITIES
 
-  // Filter and sort tasks
-  const processedTasks = useMemo(() => {
+  // Filter tasks (including subtasks)
+  const filteredTasks = useMemo(() => {
     if (!tasks) return []
 
     let result = [...tasks]
@@ -258,7 +260,13 @@ export default function ListPage({
       })
     }
 
-    // Apply sorting
+    return result
+  }, [tasks, filters])
+
+  // Apply sorting to filtered tasks
+  const sortedTasks = useMemo(() => {
+    const result = [...filteredTasks]
+
     result.sort((a, b) => {
       let comparison = 0
       switch (sortBy) {
@@ -286,15 +294,27 @@ export default function ListPage({
     })
 
     return result
-  }, [tasks, filters, sortBy, sortOrder])
+  }, [filteredTasks, sortBy, sortOrder])
 
-  // Group tasks if grouping is enabled
+  // Build task tree from filtered and sorted tasks
+  const taskTree = useMemo(() => buildTaskTree(sortedTasks), [sortedTasks])
+
+  // Flatten tree based on expanded state for rendering
+  const flatTasks = useMemo(() => flattenTree(taskTree, expandedTasks), [taskTree, expandedTasks])
+
+  // For display count - use filtered tasks (not flatTasks which excludes collapsed subtasks)
+  const displayTaskCount = filteredTasks.length
+
+  // Group root tasks if grouping is enabled (subtasks are nested under their parent)
   const groupedTasks = useMemo(() => {
-    if (!groupBy) return { ungrouped: processedTasks }
+    // Use taskTree which contains only root tasks at the top level
+    const rootTasks = taskTree
+    
+    if (!groupBy) return { ungrouped: rootTasks }
 
-    const groups: Record<string, TaskResponse[]> = {}
+    const groups: Record<string, TaskTreeNode[]> = {}
 
-    processedTasks.forEach((task) => {
+    rootTasks.forEach((task) => {
       let groupKey = "unknown"
       switch (groupBy) {
         case "status":
@@ -330,7 +350,7 @@ export default function ListPage({
     })
 
     return groups
-  }, [processedTasks, groupBy])
+  }, [taskTree, groupBy])
 
   // Handlers
   const handleCreateTask = useCallback(() => {
@@ -425,12 +445,12 @@ export default function ListPage({
   const handleSelectAll = useCallback(
     (selected: boolean) => {
       if (selected) {
-        setSelectedTasks(new Set(processedTasks.map((t) => t.id)))
+        setSelectedTasks(new Set(flatTasks.map((t) => t.id)))
       } else {
         setSelectedTasks(new Set())
       }
     },
-    [processedTasks]
+    [flatTasks]
   )
 
   const handleClearSelection = useCallback(() => {
@@ -466,6 +486,19 @@ export default function ListPage({
         next.delete(groupKey)
       } else {
         next.add(groupKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Toggle expand/collapse for nested subtasks
+  const toggleExpand = useCallback((taskId: string) => {
+    setExpandedTasks((prev) => {
+      const next = new Set(prev)
+      if (next.has(taskId)) {
+        next.delete(taskId)
+      } else {
+        next.add(taskId)
       }
       return next
     })
@@ -535,8 +568,8 @@ export default function ListPage({
           <div>
             <h1 className="text-2xl font-bold">{isListLoading ? "Loading..." : list?.name || "List"}</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              {processedTasks.length} task{processedTasks.length !== 1 ? "s" : ""}
-              {processedTasks.length !== (tasks?.length || 0) && (
+              {displayTaskCount} task{displayTaskCount !== 1 ? "s" : ""}
+              {displayTaskCount !== (tasks?.length || 0) && (
                 <span className="text-muted-foreground">
                   {" "}(filtered from {tasks?.length || 0})
                 </span>
@@ -651,16 +684,16 @@ export default function ListPage({
             )}
 
             {/* Task table */}
-            {processedTasks.length > 0 ? (
+            {flatTasks.length > 0 ? (
               <div>
                 {/* Table Header */}
                 <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
                   <Checkbox
-                    checked={selectedTasks.size === processedTasks.length && processedTasks.length > 0}
+                    checked={selectedTasks.size === flatTasks.length && flatTasks.length > 0}
                     onCheckedChange={(checked) => handleSelectAll(!!checked)}
                     className="flex-shrink-0"
                   />
-                  <div className="w-4 flex-shrink-0" /> {/* Status button space */}
+                  <div className="w-5 flex-shrink-0" /> {/* Expand/collapse button space */}
                   <div className="flex-1 min-w-[200px]">Name</div>
                   <div className="w-28 flex-shrink-0">Status</div>
                   <div className="w-24 flex-shrink-0">Priority</div>
@@ -685,22 +718,31 @@ export default function ListPage({
                       />
                       {!collapsedGroups.has(groupKey) && (
                         <div>
-                          {groupedTasks[groupKey].map((task) => (
-                            <TaskTableRowWrapper
-                              key={task.id}
-                              task={task}
-                              isSelected={selectedTasks.has(task.id)}
-                              onSelect={handleTaskSelect}
-                              onStatusChange={handleStatusChange}
-                              onClick={(taskId) => setSelectedTask(taskId)}
-                              workspaceId={workspaceId}
-                              workspaceMembers={workspaceMembers || []}
-                              onPriorityChange={handlePriorityChange}
-                              onDueDateChange={handleDueDateChange}
-                              onAssigneeAdd={handleAssigneeAdd}
-                              onAssigneeRemove={handleAssigneeRemove}
-                            />
-                          ))}
+                          {groupedTasks[groupKey].map((rootTask) => {
+                            // Get the root task + its expanded subtasks
+                            const taskWithSubtasks = flattenTree([rootTask], expandedTasks)
+                            return taskWithSubtasks.map((task) => (
+                              <TaskTableRowWrapper
+                                key={task.id}
+                                task={task}
+                                depth={task.depth}
+                                hasChildren={task.children.length > 0}
+                                childCount={task.children.length}
+                                isExpanded={expandedTasks.has(task.id)}
+                                onToggleExpand={toggleExpand}
+                                isSelected={selectedTasks.has(task.id)}
+                                onSelect={handleTaskSelect}
+                                onStatusChange={handleStatusChange}
+                                onClick={(taskId) => setSelectedTask(taskId)}
+                                workspaceId={workspaceId}
+                                workspaceMembers={workspaceMembers || []}
+                                onPriorityChange={handlePriorityChange}
+                                onDueDateChange={handleDueDateChange}
+                                onAssigneeAdd={handleAssigneeAdd}
+                                onAssigneeRemove={handleAssigneeRemove}
+                              />
+                            ))
+                          })}
                           {/* Inline new task row */}
                           <InlineNewTaskRow
                             listId={listId}
@@ -716,10 +758,15 @@ export default function ListPage({
                   // Flat view
                   (
                     <>
-                      {processedTasks.map((task) => (
+                      {flatTasks.map((task) => (
                         <TaskTableRowWrapper
                           key={task.id}
                           task={task}
+                          depth={task.depth}
+                          hasChildren={task.children.length > 0}
+                          childCount={task.children.length}
+                          isExpanded={expandedTasks.has(task.id)}
+                          onToggleExpand={toggleExpand}
                           isSelected={selectedTasks.has(task.id)}
                           onSelect={handleTaskSelect}
                           onStatusChange={handleStatusChange}

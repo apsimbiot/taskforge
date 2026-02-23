@@ -8,9 +8,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Calendar } from "@/components/ui/calendar"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
-import { Calendar as CalendarIcon, Plus } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, ChevronRight, ChevronDown } from "lucide-react"
 
 export interface TaskTableRowProps {
   task: TaskResponse
@@ -28,6 +29,12 @@ export interface TaskTableRowProps {
   onDueDateChange?: (taskId: string, date: string | undefined) => void
   onAssigneeAdd?: (taskId: string, userId: string) => void
   onAssigneeRemove?: (taskId: string, userId: string) => void
+  // New props for nested tasks
+  depth?: number
+  hasChildren?: boolean
+  childCount?: number
+  isExpanded?: boolean
+  onToggleExpand?: (taskId: string) => void
 }
 
 const STATUS_ORDER = ["todo", "in_progress", "review", "done"]
@@ -63,6 +70,11 @@ export function TaskTableRow({
   onDueDateChange,
   onAssigneeAdd,
   onAssigneeRemove,
+  depth = 0,
+  hasChildren = false,
+  childCount = 0,
+  isExpanded = false,
+  onToggleExpand,
 }: TaskTableRowProps) {
   const status = task.status || "todo"
   const priority = task.priority || "none"
@@ -102,19 +114,52 @@ export function TaskTableRow({
 
   const dueDate = task.dueDate ? new Date(task.dueDate) : undefined
 
+  // Calculate indentation
+  const indentPadding = depth * 24 + 8
+
   return (
     <div
       className={cn(
         "flex items-center gap-2 px-4 py-2 border-b border-border/50 hover:bg-accent/30 transition-colors group",
-        isSelected && "bg-accent/50"
+        isSelected && "bg-accent/50",
+        depth > 0 && "bg-muted/20"
       )}
+      style={{ paddingLeft: `${indentPadding}px` }}
     >
+      {/* Visual connector line for subtasks */}
+      {depth > 0 && (
+        <div 
+          className="absolute left-0 top-0 bottom-0 w-px bg-border" 
+          style={{ left: `${depth * 24 - 8}px` }}
+        />
+      )}
+
       {/* Checkbox */}
       <Checkbox
         checked={isSelected}
         onCheckedChange={(checked) => onSelect(task.id, !!checked)}
         className="flex-shrink-0"
       />
+
+      {/* Expand/collapse button for tasks with children */}
+      {hasChildren ? (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleExpand?.(task.id)
+          }}
+          className="flex-shrink-0 p-0.5 hover:bg-accent rounded transition-colors"
+          title={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+        >
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+      ) : (
+        <div className="w-5 flex-shrink-0" />
+      )}
 
       {/* Status button */}
       <button
@@ -132,7 +177,7 @@ export function TaskTableRow({
       </button>
 
       {/* Name */}
-      <div className="flex-1 min-w-[200px]">
+      <div className="flex-1 min-w-[200px] flex items-center gap-1">
         <button
           onClick={() => onClick?.(task.id)}
           className={cn(
@@ -142,6 +187,12 @@ export function TaskTableRow({
         >
           {task.title}
         </button>
+        {/* Subtask count badge */}
+        {hasChildren && (
+          <Badge variant="secondary" className="text-[10px] ml-1 h-5 px-1.5">
+            {childCount}
+          </Badge>
+        )}
       </div>
 
       {/* Status badge */}
