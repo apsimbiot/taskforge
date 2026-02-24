@@ -416,6 +416,31 @@ export default function ListPage({
     [removeTaskAssigneeMutation]
   )
 
+  const handleRename = useCallback(
+    (taskId: string, newTitle: string) => {
+      updateTaskMutation.mutate({ taskId, title: newTitle })
+    },
+    [updateTaskMutation]
+  )
+
+  const handleAddSubtask = useCallback(
+    (parentTaskId: string) => {
+      createTaskMutation.mutate({
+        listId,
+        title: "New subtask",
+        parentTaskId,
+        status: "todo",
+      })
+      // Auto-expand the parent so the new subtask is visible
+      setExpandedTasks((prev) => {
+        const next = new Set(prev)
+        next.add(parentTaskId)
+        return next
+      })
+    },
+    [createTaskMutation, listId]
+  )
+
   const handleBulkStatusChange = useCallback(
     (taskIds: string[], status: string) => {
       taskIds.forEach((taskId) => {
@@ -757,6 +782,8 @@ export default function ListPage({
                                 onDueDateChange={handleDueDateChange}
                                 onAssigneeAdd={handleAssigneeAdd}
                                 onAssigneeRemove={handleAssigneeRemove}
+                                onRename={handleRename}
+                                onAddSubtask={handleAddSubtask}
                               />
                             ))
                           })}
@@ -794,6 +821,8 @@ export default function ListPage({
                           onDueDateChange={handleDueDateChange}
                           onAssigneeAdd={handleAssigneeAdd}
                           onAssigneeRemove={handleAssigneeRemove}
+                          onRename={handleRename}
+                          onAddSubtask={handleAddSubtask}
                         />
                       ))}
                       {/* Inline new task row for flat view */}

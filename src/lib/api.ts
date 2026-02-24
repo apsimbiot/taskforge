@@ -190,6 +190,7 @@ export async function createTask(
     priority?: string
     dueDate?: string
     timeEstimate?: number
+    parentTaskId?: string
   }
 ): Promise<{ task: TaskResponse }> {
   return fetchJSON(`/lists/${listId}/tasks`, {

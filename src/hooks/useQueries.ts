@@ -232,6 +232,7 @@ export function useCreateTask() {
       priority?: string
       dueDate?: string
       timeEstimate?: number
+      parentTaskId?: string
     }) => createTask(listId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", variables.listId] })

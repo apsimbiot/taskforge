@@ -11,7 +11,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
-import { Calendar as CalendarIcon, Plus, ChevronRight, ChevronDown } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Calendar as CalendarIcon, Plus, ChevronRight, ChevronDown, Pencil, ListPlus } from "lucide-react"
 
 export interface TaskTableRowProps {
   task: TaskResponse
@@ -29,6 +30,8 @@ export interface TaskTableRowProps {
   onDueDateChange?: (taskId: string, date: string | undefined) => void
   onAssigneeAdd?: (taskId: string, userId: string) => void
   onAssigneeRemove?: (taskId: string, userId: string) => void
+  onRename?: (taskId: string, newTitle: string) => void
+  onAddSubtask?: (parentTaskId: string) => void
   // New props for nested tasks
   depth?: number
   hasChildren?: boolean
@@ -70,6 +73,8 @@ export function TaskTableRow({
   onDueDateChange,
   onAssigneeAdd,
   onAssigneeRemove,
+  onRename,
+  onAddSubtask,
   depth = 0,
   hasChildren = false,
   childCount = 0,
@@ -79,6 +84,9 @@ export function TaskTableRow({
   const status = task.status || "todo"
   const priority = task.priority || "none"
   const [assigneeSearch, setAssigneeSearch] = React.useState("")
+  const [isEditing, setIsEditing] = React.useState(false)
+  const [editTitle, setEditTitle] = React.useState(task.title)
+  const inputRef = React.useRef<HTMLInputElement>(null)
 
   const cycleStatus = () => {
     const currentIndex = STATUS_ORDER.indexOf(status)
@@ -180,20 +188,80 @@ export function TaskTableRow({
 
       {/* Name */}
       <div className="flex-1 min-w-[200px] flex items-center gap-1">
-        <button
-          onClick={() => onClick?.(task.id)}
-          className={cn(
-            "text-sm truncate block text-left hover:text-primary hover:underline transition-colors cursor-pointer",
-            status === "done" && "line-through text-muted-foreground"
-          )}
-        >
-          {task.title}
-        </button>
+        {isEditing ? (
+          <Input
+            ref={inputRef}
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onBlur={() => {
+              if (editTitle.trim() && editTitle !== task.title) {
+                onRename?.(task.id, editTitle.trim())
+              } else {
+                setEditTitle(task.title)
+              }
+              setIsEditing(false)
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (editTitle.trim() && editTitle !== task.title) {
+                  onRename?.(task.id, editTitle.trim())
+                }
+                setIsEditing(false)
+              }
+              if (e.key === "Escape") {
+                setEditTitle(task.title)
+                setIsEditing(false)
+              }
+            }}
+            className="h-7 text-sm px-1 py-0"
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <button
+            onClick={() => onClick?.(task.id)}
+            className={cn(
+              "text-sm truncate block text-left hover:text-primary hover:underline transition-colors cursor-pointer",
+              status === "done" && "line-through text-muted-foreground"
+            )}
+          >
+            {task.title}
+          </button>
+        )}
         {/* Subtask count badge */}
-        {hasChildren && (
+        {hasChildren && !isEditing && (
           <Badge variant="secondary" className="text-[10px] ml-1 h-5 px-1.5">
             {childCount}
           </Badge>
+        )}
+
+        {/* Hover action buttons */}
+        {!isEditing && (
+          <div className="hidden group-hover:flex items-center gap-0.5 ml-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setEditTitle(task.title)
+                setIsEditing(true)
+              }}
+              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              title="Rename task"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            {onAddSubtask && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAddSubtask(task.id)
+                }}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                title="Add subtask"
+              >
+                <ListPlus className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -16,6 +16,8 @@ interface TaskTableRowWrapperProps {
   onDueDateChange?: (taskId: string, date: string | undefined) => void
   onAssigneeAdd?: (taskId: string, userId: string) => void
   onAssigneeRemove?: (taskId: string, userId: string) => void
+  onRename?: (taskId: string, newTitle: string) => void
+  onAddSubtask?: (parentTaskId: string) => void
   // New props for nested tasks
   depth?: number
   hasChildren?: boolean
