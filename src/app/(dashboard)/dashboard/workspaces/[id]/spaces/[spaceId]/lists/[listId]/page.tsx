@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useCallback, useMemo, useEffect } from "react"
+import React, { use, useState, useCallback, useMemo, useEffect } from "react"
 import {
   Plus,
   List,
@@ -134,6 +134,58 @@ function FilterChips({
 }
 
 // Inline new task row component
+function InlineSubtaskInput({
+  depth,
+  onSubmit,
+  onCancel,
+}: {
+  depth: number
+  onSubmit: (title: string) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState("")
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  return (
+    <div
+      className="flex items-center gap-2 px-4 py-1.5 border-b border-border/50 bg-accent/20"
+    >
+      <div style={{ width: `${depth * 28 + 8}px` }} className="flex-shrink-0" />
+      <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/40 flex-shrink-0" />
+      <input
+        ref={inputRef}
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && title.trim()) {
+            onSubmit(title.trim())
+            setTitle("")
+            // Keep focus for adding more subtasks
+            setTimeout(() => inputRef.current?.focus(), 50)
+          }
+          if (e.key === "Escape") {
+            onCancel()
+          }
+        }}
+        onBlur={() => {
+          if (title.trim()) {
+            onSubmit(title.trim())
+          }
+          onCancel()
+        }}
+        placeholder="Type subtask name and press Enter..."
+        className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50"
+      />
+      <span className="text-xs text-muted-foreground">Enter to save · Esc to cancel</span>
+    </div>
+  )
+}
+
 function InlineNewTaskRow({
   listId,
   defaultStatus,
@@ -423,20 +475,31 @@ export default function ListPage({
     [updateTaskMutation]
   )
 
+  // Track which parent task has an active subtask input
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null)
+
   const handleAddSubtask = useCallback(
     (parentTaskId: string) => {
-      createTaskMutation.mutate({
-        listId,
-        title: "New subtask",
-        parentTaskId,
-        status: "todo",
-      })
-      // Auto-expand the parent so the new subtask is visible
+      // Auto-expand the parent so the input row is visible
       setExpandedTasks((prev) => {
         const next = new Set(prev)
         next.add(parentTaskId)
         return next
       })
+      setAddingSubtaskFor(parentTaskId)
+    },
+    []
+  )
+
+  const handleCreateSubtask = useCallback(
+    (parentTaskId: string, title: string) => {
+      createTaskMutation.mutate({
+        listId,
+        title,
+        parentTaskId,
+        status: "todo",
+      })
+      setAddingSubtaskFor(null)
     },
     [createTaskMutation, listId]
   )
@@ -764,27 +827,35 @@ export default function ListPage({
                             // Get the root task + its expanded subtasks
                             const taskWithSubtasks = flattenTree([rootTask], expandedTasks)
                             return taskWithSubtasks.map((task) => (
-                              <TaskTableRowWrapper
-                                key={task.id}
-                                task={task}
-                                depth={task.depth}
-                                hasChildren={task.children.length > 0}
-                                childCount={task.children.length}
-                                isExpanded={expandedTasks.has(task.id)}
-                                onToggleExpand={toggleExpand}
-                                isSelected={selectedTasks.has(task.id)}
-                                onSelect={handleTaskSelect}
-                                onStatusChange={handleStatusChange}
-                                onClick={(taskId) => setSelectedTask(taskId)}
-                                workspaceId={workspaceId}
-                                workspaceMembers={workspaceMembers || []}
-                                onPriorityChange={handlePriorityChange}
-                                onDueDateChange={handleDueDateChange}
-                                onAssigneeAdd={handleAssigneeAdd}
-                                onAssigneeRemove={handleAssigneeRemove}
-                                onRename={handleRename}
-                                onAddSubtask={handleAddSubtask}
-                              />
+                              <React.Fragment key={task.id}>
+                                <TaskTableRowWrapper
+                                  task={task}
+                                  depth={task.depth}
+                                  hasChildren={task.children.length > 0}
+                                  childCount={task.children.length}
+                                  isExpanded={expandedTasks.has(task.id)}
+                                  onToggleExpand={toggleExpand}
+                                  isSelected={selectedTasks.has(task.id)}
+                                  onSelect={handleTaskSelect}
+                                  onStatusChange={handleStatusChange}
+                                  onClick={(taskId) => setSelectedTask(taskId)}
+                                  workspaceId={workspaceId}
+                                  workspaceMembers={workspaceMembers || []}
+                                  onPriorityChange={handlePriorityChange}
+                                  onDueDateChange={handleDueDateChange}
+                                  onAssigneeAdd={handleAssigneeAdd}
+                                  onAssigneeRemove={handleAssigneeRemove}
+                                  onRename={handleRename}
+                                  onAddSubtask={handleAddSubtask}
+                                />
+                                {addingSubtaskFor === task.id && (
+                                  <InlineSubtaskInput
+                                    depth={(task.depth || 0) + 1}
+                                    onSubmit={(title) => handleCreateSubtask(task.id, title)}
+                                    onCancel={() => setAddingSubtaskFor(null)}
+                                  />
+                                )}
+                              </React.Fragment>
                             ))
                           })}
                           {/* Inline new task row */}
@@ -803,27 +874,35 @@ export default function ListPage({
                   (
                     <>
                       {flatTasks.map((task) => (
-                        <TaskTableRowWrapper
-                          key={task.id}
-                          task={task}
-                          depth={task.depth}
-                          hasChildren={task.children.length > 0}
-                          childCount={task.children.length}
-                          isExpanded={expandedTasks.has(task.id)}
-                          onToggleExpand={toggleExpand}
-                          isSelected={selectedTasks.has(task.id)}
-                          onSelect={handleTaskSelect}
-                          onStatusChange={handleStatusChange}
-                          onClick={(taskId) => setSelectedTask(taskId)}
-                          workspaceId={workspaceId}
-                          workspaceMembers={workspaceMembers || []}
-                          onPriorityChange={handlePriorityChange}
-                          onDueDateChange={handleDueDateChange}
-                          onAssigneeAdd={handleAssigneeAdd}
-                          onAssigneeRemove={handleAssigneeRemove}
-                          onRename={handleRename}
-                          onAddSubtask={handleAddSubtask}
-                        />
+                        <React.Fragment key={task.id}>
+                          <TaskTableRowWrapper
+                            task={task}
+                            depth={task.depth}
+                            hasChildren={task.children.length > 0}
+                            childCount={task.children.length}
+                            isExpanded={expandedTasks.has(task.id)}
+                            onToggleExpand={toggleExpand}
+                            isSelected={selectedTasks.has(task.id)}
+                            onSelect={handleTaskSelect}
+                            onStatusChange={handleStatusChange}
+                            onClick={(taskId) => setSelectedTask(taskId)}
+                            workspaceId={workspaceId}
+                            workspaceMembers={workspaceMembers || []}
+                            onPriorityChange={handlePriorityChange}
+                            onDueDateChange={handleDueDateChange}
+                            onAssigneeAdd={handleAssigneeAdd}
+                            onAssigneeRemove={handleAssigneeRemove}
+                            onRename={handleRename}
+                            onAddSubtask={handleAddSubtask}
+                          />
+                          {addingSubtaskFor === task.id && (
+                            <InlineSubtaskInput
+                              depth={(task.depth || 0) + 1}
+                              onSubmit={(title) => handleCreateSubtask(task.id, title)}
+                              onCancel={() => setAddingSubtaskFor(null)}
+                            />
+                          )}
+                        </React.Fragment>
                       ))}
                       {/* Inline new task row for flat view */}
                       <InlineNewTaskRow
