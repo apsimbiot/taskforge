@@ -228,9 +228,25 @@ export default function ListPage({
     return () => window.removeEventListener("popstate", handlePopState)
   }, [setSelectedTask, closeTaskPanel])
 
+  // Map status names to standard values (To Do -> todo, Done -> done, etc.)
+  const STATUS_VALUE_MAP: Record<string, string> = {
+    "to do": "todo",
+    "todo": "todo",
+    "in progress": "in_progress",
+    "in_progress": "in_progress",
+    "review": "review",
+    "in review": "review",
+    "done": "done",
+    "closed": "closed",
+  }
+
   // Available filter options (from API or defaults)
   const availableStatuses = statuses && statuses.length > 0
-    ? statuses.map((s) => ({ value: s.id, label: s.name, color: s.color || "#6b7280" }))
+    ? statuses.map((s) => {
+        const normalizedName = s.name.toLowerCase().trim()
+        const value = STATUS_VALUE_MAP[normalizedName] || normalizedName.replace(" ", "_")
+        return { value, label: s.name, color: s.color || "#6b7280" }
+      })
     : DEFAULT_STATUSES
   const availablePriorities = DEFAULT_PRIORITIES
 
