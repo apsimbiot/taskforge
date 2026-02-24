@@ -130,9 +130,10 @@ export function FilterPopover({
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <div className="space-y-1">
                 {availableStatuses.map((status) => (
-                  <label
+                  <div
                     key={status.value}
                     className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1"
+                    onClick={() => toggleStatus(status.value)}
                   >
                     <Checkbox
                       checked={filters.status.includes(status.value)}
@@ -143,7 +144,7 @@ export function FilterPopover({
                       style={{ backgroundColor: status.color }}
                     />
                     {status.label}
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
@@ -155,16 +156,17 @@ export function FilterPopover({
               <label className="text-xs font-medium text-muted-foreground">Priority</label>
               <div className="space-y-1">
                 {availablePriorities.map((priority) => (
-                  <label
+                  <div
                     key={priority.value}
                     className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent rounded px-2 py-1"
+                    onClick={() => togglePriority(priority.value)}
                   >
                     <Checkbox
                       checked={filters.priority.includes(priority.value)}
                       onCheckedChange={() => togglePriority(priority.value)}
                     />
                     {priority.label}
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>
