@@ -14,19 +14,30 @@ export function buildTaskTree(tasks: TaskResponse[], maxDepth: number = 3): Task
     taskMap.set(task.id, { ...task, children: [], depth: 0 })
   }
 
-  // Build tree
+  // First pass: link children to parents (depth stays 0 for now)
   for (const task of tasks) {
     const node = taskMap.get(task.id)!
     if (task.parentTaskId && taskMap.has(task.parentTaskId)) {
       const parent = taskMap.get(task.parentTaskId)!
-      node.depth = parent.depth + 1
-      if (node.depth <= maxDepth) {
-        parent.children.push(node)
-      }
+      parent.children.push(node)
     } else {
       roots.push(node)
     }
   }
+
+  // Second pass: calculate depths recursively from roots
+  function setDepths(nodes: TaskTreeNode[], depth: number) {
+    for (const node of nodes) {
+      node.depth = depth
+      if (depth < maxDepth) {
+        setDepths(node.children, depth + 1)
+      } else {
+        // Beyond max depth — remove children so they don't render
+        node.children = []
+      }
+    }
+  }
+  setDepths(roots, 0)
 
   return roots
 }

@@ -375,8 +375,9 @@ export default function ListPage({
 
   // Group root tasks if grouping is enabled (subtasks are nested under their parent)
   const groupedTasks = useMemo(() => {
-    // Use taskTree which contains only root tasks at the top level
-    const rootTasks = taskTree
+    // Use flatTasks to respect expanded/collapsed state
+    // Only root tasks (depth 0) get grouped - subtasks appear under their parent
+    const rootTasks = taskTree.filter(t => t.depth === 0)
     
     if (!groupBy) return { ungrouped: rootTasks }
 
