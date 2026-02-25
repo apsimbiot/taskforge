@@ -40,6 +40,8 @@ export interface TaskTableRowProps {
   onToggleExpand?: (taskId: string) => void
 }
 
+const MAX_NESTING_DEPTH = 3
+
 const STATUS_ORDER = ["todo", "in_progress", "review", "done"]
 
 const STATUS_COLORS: Record<string, string> = {
@@ -83,6 +85,7 @@ export function TaskTableRow({
 }: TaskTableRowProps) {
   const status = task.status || "todo"
   const priority = task.priority || "none"
+  const canHaveChildren = (depth || 0) < MAX_NESTING_DEPTH
   const [assigneeSearch, setAssigneeSearch] = React.useState("")
   const [isEditing, setIsEditing] = React.useState(false)
   const [editTitle, setEditTitle] = React.useState(task.title)
@@ -151,8 +154,8 @@ export function TaskTableRow({
         className="flex-shrink-0"
       />
 
-      {/* Expand/collapse button for tasks with children */}
-      {hasChildren ? (
+      {/* Expand/collapse button for tasks with children (only if can have subtasks) */}
+      {hasChildren && canHaveChildren ? (
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -229,7 +232,7 @@ export function TaskTableRow({
           </button>
         )}
         {/* Subtask count badge */}
-        {hasChildren && !isEditing && (
+        {hasChildren && !isEditing && canHaveChildren && (
           <Badge variant="secondary" className="text-[10px] ml-1 h-5 px-1.5">
             {childCount}
           </Badge>
@@ -249,7 +252,7 @@ export function TaskTableRow({
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
-            {onAddSubtask && (
+            {onAddSubtask && canHaveChildren && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
