@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, content, listId } = inputSchema.parse(body);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-04-17" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
     let result;
 
@@ -64,10 +64,10 @@ export async function POST(request: NextRequest) {
       const mimeType = match[1];
       const base64Data = match[2];
 
-      // Check size — base64 data should be under 3MB
-      if (base64Data.length > 3 * 1024 * 1024) {
+      // Check size — base64 data should be under 2MB to stay within context limits
+      if (base64Data.length > 2 * 1024 * 1024) {
         return NextResponse.json(
-          { error: "File too large. Please use a smaller file or paste the text directly." },
+          { error: "File too large (max 2MB after encoding). Please use a smaller PDF or paste text directly." },
           { status: 400 }
         );
       }
