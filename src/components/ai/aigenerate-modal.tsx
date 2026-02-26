@@ -255,16 +255,27 @@ export function AIGenerateModal({
             )}
 
             {inputType === "file" && (
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer">
+              <div 
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
+                onClick={() => document.getElementById("file-upload-input")?.click()}
+              >
                 <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                 <p className="text-sm font-medium">Drop files here or click to upload</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Supports .txt, .md, .doc, .docx, .pdf
                 </p>
                 <input
+                  id="file-upload-input"
                   type="file"
                   className="hidden"
                   accept=".txt,.md,.doc,.docx,.pdf"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    const text = await file.text()
+                    setContent(text)
+                    setInputType("text")
+                  }}
                 />
               </div>
             )}
