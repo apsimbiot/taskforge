@@ -51,7 +51,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { type, content, listId } = inputSchema.parse(body);
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    // Use 1.5-flash which has better document understanding
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     let result;
 
