@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
+  Sparkles,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,6 +31,7 @@ import { SortDropdown, PRIORITY_ORDER } from "@/components/list-view/sort-dropdo
 import { FilterPopover, type FilterState } from "@/components/list-view/filter-popover"
 import { TaskTableRowWrapper } from "@/components/list-view/task-table-row-wrapper"
 import { BulkActionsBar } from "@/components/list-view/bulk-actions-bar"
+import { AIGenerateModal } from "@/components/ai/aigenerate-modal"
 
 type ViewMode = "list" | "board" | "gantt"
 type GroupByOption = "status" | "priority" | "assignee" | "dueDate" | "label" | null
@@ -245,6 +247,7 @@ export default function ListPage({
   // New task input state
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [showNewTask, setShowNewTask] = useState(false)
+  const [showAIGenerate, setShowAIGenerate] = useState(false)
 
   // List view state
   const [groupBy, setGroupBy] = useState<GroupByOption>(null)
@@ -712,10 +715,16 @@ export default function ListPage({
                 Gantt
               </Button>
             </div>
-            <Button onClick={() => setShowNewTask(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Task
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowAIGenerate(true)}>
+                <Sparkles className="h-4 w-4 mr-2" />
+                AI Generate
+              </Button>
+              <Button onClick={() => setShowNewTask(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                New Task
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -997,6 +1006,17 @@ export default function ListPage({
         availablePriorities={availablePriorities}
         availableAssignees={[]}
         availableLabels={[]}
+      />
+
+      {/* AI Generate Modal */}
+      <AIGenerateModal
+        isOpen={showAIGenerate}
+        onClose={() => setShowAIGenerate(false)}
+        listId={listId}
+        onTasksCreated={(count) => {
+          // Optionally show a success message or refresh tasks
+          console.log(`Created ${count} tasks`)
+        }}
       />
 
       {/* Task Detail Panel */}
