@@ -6,7 +6,8 @@ export default auth((req) => {
     req.nextUrl.pathname === "/login" ||
     req.nextUrl.pathname === "/register" ||
     req.nextUrl.pathname.startsWith("/api/auth") ||
-    req.nextUrl.pathname.startsWith("/api/health");
+    req.nextUrl.pathname.startsWith("/api/health") ||
+    req.nextUrl.pathname.startsWith("/api/ai/generate-tasks");
 
   if (!req.auth && !isPublicPath) {
     const newUrl = new URL("/login", req.nextUrl.origin);
