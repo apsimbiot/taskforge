@@ -49,7 +49,8 @@ export interface KanbanColumnProps {
   onMoveRight?: (statusId: string) => void
   canMoveLeft?: boolean
   canMoveRight?: boolean
-  isDraggingOver?: boolean
+  isDragOver?: boolean
+  isDragging?: boolean
 }
 
 export function KanbanColumn({
@@ -66,8 +67,10 @@ export function KanbanColumn({
   onMoveRight,
   canMoveLeft = false,
   canMoveRight = false,
+  isDragOver = false,
+  isDragging = false,
 }: KanbanColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef } = useDroppable({
     id: status.id,
   })
 
@@ -88,8 +91,9 @@ export function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex flex-col w-80 min-w-[320px] bg-muted/30 rounded-lg transition-all duration-200",
-        isOver && "bg-primary/5 ring-2 ring-primary/30 border-primary/50"
+        "flex flex-col w-80 min-w-[320px] bg-muted/30 rounded-lg border-2 border-transparent transition-all duration-200",
+        isDragOver && "bg-primary/10 ring-2 ring-primary/50 border-primary scale-[1.02] shadow-lg shadow-primary/10",
+        isDragging && !isDragOver && "opacity-80"
       )}
     >
       {/* Column Header */}
@@ -199,7 +203,7 @@ export function KanbanColumn({
         ref={setNodeRef}
         className={cn(
           "flex-1 p-2 space-y-2 overflow-auto min-h-[200px] transition-all duration-200",
-          isOver && "bg-primary/5"
+          isDragOver && "bg-primary/5"
         )}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
@@ -214,14 +218,21 @@ export function KanbanColumn({
           ))}
         </SortableContext>
 
+        {/* Drop placeholder for non-empty columns */}
+        {tasks.length > 0 && isDragOver && (
+          <div className="h-16 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 flex items-center justify-center text-sm text-primary font-medium animate-pulse">
+            Drop here
+          </div>
+        )}
+
         {tasks.length === 0 && (
           <div className={cn(
             "flex items-center justify-center h-24 text-sm rounded-lg border-2 border-dashed transition-all duration-200",
-            isOver 
-              ? "border-primary bg-primary/10 text-primary font-medium" 
+            isDragOver 
+              ? "border-primary bg-primary/10 text-primary font-medium animate-pulse" 
               : "border-border/50 text-muted-foreground"
           )}>
-            {isOver ? "Drop here!" : "Drop tasks here"}
+            {isDragOver ? "Drop here!" : "Drop tasks here"}
           </div>
         )}
       </div>

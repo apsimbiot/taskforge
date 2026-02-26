@@ -149,6 +149,7 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
   }, [localTasks, statuses])
 
   const [activeTask, setActiveTask] = useState<TaskResponse | null>(null)
+  const [overColumnId, setOverColumnId] = useState<string | null>(null)
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = localTasks.find((t) => t.id === event.active.id)
@@ -157,8 +158,34 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
     }
   }
 
-  const handleDragOver = (_event: DragOverEvent) => {
-    // Visual feedback handled by the droppable isOver state in KanbanColumn
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event
+    if (!over) {
+      setOverColumnId(null)
+      return
+    }
+
+    const overId = over.id as string
+
+    // Check if hovering over a column directly
+    const overStatus = statuses.find((s) => s.id === overId)
+    if (overStatus) {
+      setOverColumnId(overStatus.id)
+      return
+    }
+
+    // Check if hovering over a task — find which column that task belongs to
+    const overTask = localTasks.find((t) => t.id === overId)
+    if (overTask) {
+      const taskStatus = overTask.status || "todo"
+      const column = statuses.find((s) => normalizeStatusName(s.name) === taskStatus)
+      if (column) {
+        setOverColumnId(column.id)
+        return
+      }
+    }
+
+    setOverColumnId(null)
   }
 
   // Find which status column a task belongs to
@@ -215,6 +242,7 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTask(null)
+    setOverColumnId(null)
 
     if (!over) return
 
@@ -479,6 +507,8 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
                 onMoveRight={(statusId) => handleMoveColumn(statusId, "right")}
                 canMoveLeft={index > 0}
                 canMoveRight={index < statuses.length - 1}
+                isDragOver={overColumnId === status.id}
+                isDragging={!!activeTask}
               />
             )
           })}
