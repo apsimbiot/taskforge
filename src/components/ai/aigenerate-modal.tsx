@@ -259,6 +259,23 @@ export function AIGenerateModal({
               <div 
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
                 onClick={() => document.getElementById("file-upload-input")?.click()}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add("border-primary") }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove("border-primary") }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  e.currentTarget.classList.remove("border-primary")
+                  const file = e.dataTransfer.files?.[0]
+                  if (!file) return
+                  setFileName(file.name)
+                  if (file.type.startsWith("image/")) {
+                    const reader = new FileReader()
+                    reader.onload = () => setContent(reader.result as string)
+                    reader.readAsDataURL(file)
+                  } else {
+                    file.text().then((text) => setContent(text))
+                  }
+                }}
               >
                 {fileName ? (
                   <>
