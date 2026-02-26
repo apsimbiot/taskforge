@@ -315,7 +315,7 @@ export function TaskCardOverlay({ task }: { task: TaskResponse }) {
 
   return (
     <div className={cn(
-      "flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-xl cursor-grabbing w-[288px]",
+      "flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-2xl cursor-grabbing w-[288px] rotate-2 scale-105 opacity-95",
       priorityBorder && `border-l-[3px] ${priorityBorder}`
     )}>
       <div className="flex items-start justify-between gap-2">

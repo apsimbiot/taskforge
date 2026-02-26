@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -12,6 +12,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   type DragOverEvent,
+  type DropAnimation,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -62,6 +63,12 @@ function normalizeStatusName(name: string): string {
   return aliases[slug] ?? slug
 }
 
+// Smooth drop animation config
+const dropAnimation: DropAnimation = {
+  duration: 200,
+  easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
+}
+
 export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoardProps) {
   const queryClient = useQueryClient()
   const updateTaskMutation = useUpdateTask()
@@ -72,6 +79,17 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
   const deleteStatusMutation = useDeleteStatus()
   const reorderStatusesMutation = useReorderStatuses()
   const { selectedTaskId, setSelectedTask, isOpen, close } = useTaskPanel()
+
+  // Local state for optimistic updates
+  const [localTasks, setLocalTasks] = useState<TaskResponse[]>(tasks)
+  const reorderPendingRef = useRef(false)
+
+  // Sync localTasks from props when not pending
+  useEffect(() => {
+    if (!reorderPendingRef.current) {
+      setLocalTasks(tasks)
+    }
+  }, [tasks])
 
   // Add column state
   const [showAddColumn, setShowAddColumn] = useState(false)
@@ -115,13 +133,12 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
     return map
   }, [statuses])
 
-  // Group tasks by their status column
-  // Tasks have status like "todo", statuses have names like "To Do"
+  // Group tasks by their status column (using localTasks for optimistic updates)
   const tasksByColumn = useMemo(() => {
     const grouped: Record<string, TaskResponse[]> = {}
     statuses.forEach((status) => {
       const normalizedName = normalizeStatusName(status.name)
-      grouped[status.id] = tasks
+      grouped[status.id] = localTasks
         .filter((task) => {
           const taskStatus = task.status || "todo"
           return taskStatus === normalizedName
@@ -129,12 +146,12 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     })
     return grouped
-  }, [tasks, statuses])
+  }, [localTasks, statuses])
 
   const [activeTask, setActiveTask] = useState<TaskResponse | null>(null)
 
   const handleDragStart = (event: DragStartEvent) => {
-    const task = tasks.find((t) => t.id === event.active.id)
+    const task = localTasks.find((t) => t.id === event.active.id)
     if (task) {
       setActiveTask(task)
     }
@@ -150,6 +167,51 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
     return statusMap[normalized]
   }
 
+  // Optimistically update task in local state
+  const optimisticMoveTask = useCallback((
+    taskId: string,
+    newStatus: string,
+    newOrder: number,
+    overTaskId?: string
+  ) => {
+    setLocalTasks((prev) => {
+      const taskIndex = prev.findIndex((t) => t.id === taskId)
+      if (taskIndex === -1) return prev
+
+      const task = { ...prev[taskIndex], status: newStatus, order: newOrder }
+      const newTasks = [...prev]
+      newTasks[taskIndex] = task
+
+      // If moving to a different column and we know the target position
+      if (overTaskId) {
+        const overColumnTasks = newTasks
+          .filter((t) => t.status === newStatus)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+        const overIndex = overColumnTasks.findIndex((t) => t.id === overTaskId)
+        if (overIndex !== -1) {
+          // Reorder tasks in the destination column
+          const otherTasks = newTasks.filter((t) => t.status !== newStatus || t.id === taskId)
+          const destTasks = newTasks
+            .filter((t) => t.status === newStatus && t.id !== taskId)
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+          destTasks.splice(overIndex, 0, task)
+          destTasks.forEach((t, idx) => {
+            const origIdx = newTasks.findIndex((nt) => nt.id === t.id)
+            if (origIdx !== -1) {
+              newTasks[origIdx] = { ...newTasks[origIdx], order: idx }
+            }
+          })
+
+          return [...otherTasks, ...destTasks]
+        }
+      }
+
+      return newTasks
+    })
+  }, [])
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     setActiveTask(null)
@@ -159,7 +221,7 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
     const activeId = active.id as string
     const overId = over.id as string
 
-    const draggedTask = tasks.find((t) => t.id === activeId)
+    const draggedTask = localTasks.find((t) => t.id === activeId)
     if (!draggedTask) return
 
     // Check if dropped on a column (empty area)
@@ -174,17 +236,31 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
           ? Math.max(...statusTasks.map(t => t.order ?? 0)) + 1
           : 0
 
+        // Optimistic update
+        reorderPendingRef.current = true
+        optimisticMoveTask(activeId, newStatusValue, newOrder)
+
         updateTaskMutation.mutate({
           taskId: activeId,
           status: newStatusValue,
           order: newOrder,
+        }, {
+          onSuccess: () => {
+            reorderPendingRef.current = false
+            queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+          },
+          onError: () => {
+            reorderPendingRef.current = false
+            // Revert on error by refetching
+            queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+          }
         })
       }
       return
     }
 
     // Check if dropped on another task
-    const overTask = tasks.find((t) => t.id === overId)
+    const overTask = localTasks.find((t) => t.id === overId)
     if (overTask) {
       const activeColumn = findColumnForTask(draggedTask.status)
       const overColumn = findColumnForTask(overTask.status)
@@ -200,19 +276,34 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
         if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
           const reordered = arrayMove(columnTasks, oldIndex, newIndex)
 
+          // Optimistic update
+          reorderPendingRef.current = true
+          setLocalTasks((prev) => {
+            const newTasks = [...prev]
+            reordered.forEach((task, index) => {
+              const idx = newTasks.findIndex((t) => t.id === task.id)
+              if (idx !== -1) {
+                newTasks[idx] = { ...newTasks[idx], order: index }
+              }
+            })
+            return newTasks
+          })
+
           // Update order for all affected tasks
           reordered.forEach((task, index) => {
             if (task.order !== index) {
               updateTaskMutation.mutate({
                 taskId: task.id,
                 order: index,
-              }, {
-                onSuccess: () => {
-                  queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
-                }
               })
             }
           })
+
+          // Clear pending after all mutations are sent
+          setTimeout(() => {
+            reorderPendingRef.current = false
+            queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+          }, 100)
         }
       } else {
         // Moving to different column
@@ -221,10 +312,23 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
         const newIndex = overColumnTasks.findIndex((t) => t.id === overId)
         const newOrder = newIndex >= 0 ? newIndex : overColumnTasks.length
 
+        // Optimistic update
+        reorderPendingRef.current = true
+        optimisticMoveTask(activeId, newStatusValue, newOrder, overId)
+
         updateTaskMutation.mutate({
           taskId: activeId,
           status: newStatusValue,
           order: newOrder,
+        }, {
+          onSuccess: () => {
+            reorderPendingRef.current = false
+            queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+          },
+          onError: () => {
+            reorderPendingRef.current = false
+            queryClient.invalidateQueries({ queryKey: ["tasks", listId] })
+          }
         })
       }
     }
@@ -345,7 +449,7 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
     })
   }
 
-  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null
+  const selectedTask = selectedTaskId ? localTasks.find((t) => t.id === selectedTaskId) : null
 
   return (
     <>
@@ -438,7 +542,7 @@ export function KanbanBoard({ tasks, statuses, listId, workspaceId }: KanbanBoar
           </div>
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={dropAnimation}>
           {activeTask && <TaskCardOverlay task={activeTask} />}
         </DragOverlay>
       </DndContext>

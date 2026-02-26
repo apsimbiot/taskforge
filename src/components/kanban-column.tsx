@@ -49,6 +49,7 @@ export interface KanbanColumnProps {
   onMoveRight?: (statusId: string) => void
   canMoveLeft?: boolean
   canMoveRight?: boolean
+  isDraggingOver?: boolean
 }
 
 export function KanbanColumn({
@@ -86,9 +87,10 @@ export function KanbanColumn({
 
   return (
     <div
-      className={`flex flex-col w-80 min-w-[320px] bg-muted/30 rounded-lg transition-colors ${
-        isOver ? "bg-muted/60 ring-2 ring-primary/20" : ""
-      }`}
+      className={cn(
+        "flex flex-col w-80 min-w-[320px] bg-muted/30 rounded-lg transition-all duration-200",
+        isOver && "bg-primary/5 ring-2 ring-primary/30 border-primary/50"
+      )}
     >
       {/* Column Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b">
@@ -195,7 +197,10 @@ export function KanbanColumn({
       {/* Task List */}
       <div
         ref={setNodeRef}
-        className="flex-1 p-2 space-y-2 overflow-auto min-h-[200px]"
+        className={cn(
+          "flex-1 p-2 space-y-2 overflow-auto min-h-[200px] transition-all duration-200",
+          isOver && "bg-primary/5"
+        )}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {tasks.map((task) => (
@@ -210,8 +215,13 @@ export function KanbanColumn({
         </SortableContext>
 
         {tasks.length === 0 && (
-          <div className="flex items-center justify-center h-24 text-sm text-muted-foreground border-2 border-dashed border-border/50 rounded-lg">
-            Drop tasks here
+          <div className={cn(
+            "flex items-center justify-center h-24 text-sm rounded-lg border-2 border-dashed transition-all duration-200",
+            isOver 
+              ? "border-primary bg-primary/10 text-primary font-medium" 
+              : "border-border/50 text-muted-foreground"
+          )}>
+            {isOver ? "Drop here!" : "Drop tasks here"}
           </div>
         )}
       </div>
