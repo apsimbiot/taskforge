@@ -39,10 +39,7 @@ export async function POST(request: NextRequest) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    const prompt = `Analyze the following content and extract actionable tasks. 
-    
-Content type: ${type}
-Content: ${content}
+    const prompt = `Analyze the following content and extract actionable tasks.
 
 Return a JSON array of tasks. Each task should have:
 - title: string (concise task title)
@@ -57,7 +54,33 @@ Respond ONLY with valid JSON array, no other text. Example:
   {"title": "Task 2", "description": "Description", "priority": "medium"}
 ]`;
 
-    const result = await model.generateContent(prompt);
+    let result;
+
+    // Check if content is a base64 image (data URL)
+    if (content.startsWith("data:image/")) {
+      // Extract mime type and base64 data
+      const match = content.match(/^data:(image\/\w+);base64,(.+)$/);
+      if (!match) {
+        return NextResponse.json({ error: "Invalid image data" }, { status: 400 });
+      }
+      const mimeType = match[1];
+      const base64Data = match[2];
+
+      result = await model.generateContent([
+        prompt + "\n\nAnalyze this image and extract actionable tasks from it:",
+        {
+          inlineData: {
+            mimeType,
+            data: base64Data,
+          },
+        },
+      ]);
+    } else {
+      result = await model.generateContent(
+        prompt + `\n\nContent type: ${type}\nContent:\n${content}`
+      );
+    }
+
     const response = result.response;
     const text = response.text();
 

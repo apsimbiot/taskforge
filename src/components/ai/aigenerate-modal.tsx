@@ -43,6 +43,7 @@ export function AIGenerateModal({
   const [inputType, setInputType] = useState<"text" | "file" | "url">("text")
   const [content, setContent] = useState("")
   const [url, setUrl] = useState("")
+  const [fileName, setFileName] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [generatedTasks, setGeneratedTasks] = useState<GeneratedTask[]>([])
@@ -76,7 +77,7 @@ export function AIGenerateModal({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          type: inputType === "url" ? "url" : inputType === "file" ? "file" : "text",
+          type: inputType === "url" ? "url" : content.startsWith("data:image/") ? "image" : "text",
           content: inputType === "url" ? url : content,
           listId,
         }),
@@ -259,22 +260,45 @@ export function AIGenerateModal({
                 className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
                 onClick={() => document.getElementById("file-upload-input")?.click()}
               >
-                <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-                <p className="text-sm font-medium">Drop files here or click to upload</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Supports .txt, .md, .doc, .docx, .pdf
-                </p>
+                {fileName ? (
+                  <>
+                    <FileText className="h-10 w-10 mx-auto text-primary mb-3" />
+                    <p className="text-sm font-medium text-primary">{fileName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Click to replace
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                    <p className="text-sm font-medium">Drop files here or click to upload</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports .txt, .md, .pdf, images (.png, .jpg, .jpeg, .webp)
+                    </p>
+                  </>
+                )}
                 <input
                   id="file-upload-input"
                   type="file"
                   className="hidden"
-                  accept=".txt,.md,.doc,.docx,.pdf"
+                  accept=".txt,.md,.pdf,.png,.jpg,.jpeg,.webp"
                   onChange={async (e) => {
                     const file = e.target.files?.[0]
                     if (!file) return
-                    const text = await file.text()
-                    setContent(text)
-                    setInputType("text")
+                    setFileName(file.name)
+                    
+                    // For images, convert to base64
+                    if (file.type.startsWith("image/")) {
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        setContent(reader.result as string)
+                      }
+                      reader.readAsDataURL(file)
+                    } else {
+                      // For text files, read as text
+                      const text = await file.text()
+                      setContent(text)
+                    }
                   }}
                 />
               </div>
