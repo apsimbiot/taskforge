@@ -222,9 +222,10 @@
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.6);
   pointer-events: none;
   height: 0;
+  font-style: italic;
 }
 
 .tiptap h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
@@ -251,9 +252,10 @@
 .tiptap p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground) / 0.6);
   pointer-events: none;
   height: 0;
+  font-style: italic;
 }
 
 .tiptap h1 { font-size: 1.5rem; font-weight: 700; margin: 0.5rem 0; }
