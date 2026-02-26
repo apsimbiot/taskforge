@@ -420,6 +420,39 @@ export async function fetchWorkspaceMembers(
   return data.members
 }
 
+export async function addWorkspaceMember(
+  workspaceId: string,
+  email: string,
+  role: "admin" | "member" | "viewer"
+): Promise<WorkspaceMemberResponse> {
+  const data = await fetchJSON<{ member: WorkspaceMemberResponse }>(`/workspaces/${workspaceId}/members`, {
+    method: "POST",
+    body: JSON.stringify({ email, role }),
+  })
+  return data.member
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  userId: string,
+  role: "admin" | "member" | "viewer"
+): Promise<WorkspaceMemberResponse> {
+  const data = await fetchJSON<{ member: WorkspaceMemberResponse }>(`/workspaces/${workspaceId}/members/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ role }),
+  })
+  return data.member
+}
+
+export async function removeWorkspaceMember(
+  workspaceId: string,
+  userId: string
+): Promise<{ success: boolean }> {
+  return fetchJSON(`/workspaces/${workspaceId}/members/${userId}`, {
+    method: "DELETE",
+  })
+}
+
 // ── Task Assignees ────────────────────────────────────────────────────────
 export interface TaskAssigneeResponse {
   id: string

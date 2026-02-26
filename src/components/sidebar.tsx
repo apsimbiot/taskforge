@@ -17,6 +17,7 @@ import {
   Zap,
   FileText,
   Users,
+  UserCog,
   BarChart3,
   ClipboardList,
   Bot,
@@ -396,6 +397,20 @@ export function Sidebar() {
                 </TooltipTrigger>
                 <TooltipContent side="right">Forms</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/members`)}
+                  >
+                    <UserCog className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Members</TooltipContent>
+              </Tooltip>
             </>
           )}
 
@@ -515,6 +530,15 @@ export function Sidebar() {
               >
                 <ClipboardList className="h-4 w-4" />
                 <span className="text-sm">Forms</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8"
+                onClick={() => router.push(`/dashboard/workspaces/${selectedWorkspaceId}/members`)}
+              >
+                <UserCog className="h-4 w-4" />
+                <span className="text-sm">Members</span>
               </Button>
             </>
           )}

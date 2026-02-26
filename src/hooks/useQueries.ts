@@ -60,6 +60,9 @@ import {
   type SprintResponse,
   type SprintDetailResponse,
   type DashboardStats,
+  addWorkspaceMember,
+  updateWorkspaceMemberRole,
+  removeWorkspaceMember,
   type WorkspaceMemberResponse,
   type TaskAssigneeResponse,
   type SubtaskResponse,
@@ -503,6 +506,39 @@ export function useSearchWorkspaceMembers(workspaceId: string | undefined, query
     queryKey: ["workspace-members", workspaceId, query],
     queryFn: () => fetchWorkspaceMembers(workspaceId!, query),
     enabled: !!workspaceId && query.length > 0,
+  })
+}
+
+export function useAddWorkspaceMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workspaceId, email, role }: { workspaceId: string; email: string; role: "admin" | "member" | "viewer" }) =>
+      addWorkspaceMember(workspaceId, email, role),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-members", variables.workspaceId] })
+    },
+  })
+}
+
+export function useUpdateWorkspaceMemberRole() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workspaceId, userId, role }: { workspaceId: string; userId: string; role: "admin" | "member" | "viewer" }) =>
+      updateWorkspaceMemberRole(workspaceId, userId, role),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-members", variables.workspaceId] })
+    },
+  })
+}
+
+export function useRemoveWorkspaceMember() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workspaceId, userId }: { workspaceId: string; userId: string }) =>
+      removeWorkspaceMember(workspaceId, userId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["workspace-members", variables.workspaceId] })
+    },
   })
 }
 
