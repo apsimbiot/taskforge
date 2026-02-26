@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
+import pdf from "pdf-parse";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -55,8 +56,9 @@ Respond ONLY with valid JSON array, no other text. Example:
 ]`;
 
     let result;
+    let textContent = content;
 
-    // Check if content is a base64 data URL (image or PDF)
+    // Handle base64 data URLs
     if (content.startsWith("data:")) {
       const match = content.match(/^data:([^;]+);base64,(.+)$/);
       if (!match) {
@@ -65,20 +67,31 @@ Respond ONLY with valid JSON array, no other text. Example:
       const mimeType = match[1];
       const base64Data = match[2];
 
-      result = await model.generateContent([
-        prompt + "\n\nAnalyze this file and extract actionable tasks from it:",
-        {
-          inlineData: {
-            mimeType,
-            data: base64Data,
-          },
-        },
-      ]);
-    } else {
-      // Truncate text content to ~50k chars to avoid context overflow
-      const truncated = content.length > 50000 ? content.substring(0, 50000) + "\n\n[Content truncated...]" : content;
+      if (mimeType === "application/pdf") {
+        // Extract text from PDF server-side
+        try {
+          const buffer = Buffer.from(base64Data, "base64");
+          const pdfData = await pdf(buffer);
+          textContent = pdfData.text;
+        } catch {
+          return NextResponse.json({ error: "Failed to parse PDF" }, { status: 400 });
+        }
+      } else if (mimeType.startsWith("image/")) {
+        // Send images directly to Gemini vision
+        result = await model.generateContent([
+          prompt + "\n\nAnalyze this image and extract actionable tasks from it:",
+          { inlineData: { mimeType, data: base64Data } },
+        ]);
+      }
+    }
+
+    // For text content (including extracted PDF text)
+    if (!result) {
+      const truncated = textContent.length > 50000
+        ? textContent.substring(0, 50000) + "\n\n[Content truncated...]"
+        : textContent;
       result = await model.generateContent(
-        prompt + `\n\nContent type: ${type}\nContent:\n${truncated}`
+        prompt + `\n\nContent:\n${truncated}`
       );
     }
 
