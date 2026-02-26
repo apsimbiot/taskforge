@@ -75,8 +75,10 @@ Respond ONLY with valid JSON array, no other text. Example:
         },
       ]);
     } else {
+      // Truncate text content to ~50k chars to avoid context overflow
+      const truncated = content.length > 50000 ? content.substring(0, 50000) + "\n\n[Content truncated...]" : content;
       result = await model.generateContent(
-        prompt + `\n\nContent type: ${type}\nContent:\n${content}`
+        prompt + `\n\nContent type: ${type}\nContent:\n${truncated}`
       );
     }
 
