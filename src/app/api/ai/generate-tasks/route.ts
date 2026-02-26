@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
-import pdf from "pdf-parse";
+// pdf-parse is CJS — use dynamic import
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
@@ -71,7 +71,9 @@ Respond ONLY with valid JSON array, no other text. Example:
         // Extract text from PDF server-side
         try {
           const buffer = Buffer.from(base64Data, "base64");
-          const pdfData = await pdf(buffer);
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const pdfParse = require("pdf-parse");
+          const pdfData = await pdfParse(buffer);
           textContent = pdfData.text;
         } catch {
           return NextResponse.json({ error: "Failed to parse PDF" }, { status: 400 });
@@ -87,8 +89,8 @@ Respond ONLY with valid JSON array, no other text. Example:
 
     // For text content (including extracted PDF text)
     if (!result) {
-      const truncated = textContent.length > 50000
-        ? textContent.substring(0, 50000) + "\n\n[Content truncated...]"
+      const truncated = textContent.length > 15000
+        ? textContent.substring(0, 15000) + "\n\n[Content truncated...]"
         : textContent;
       result = await model.generateContent(
         prompt + `\n\nContent:\n${truncated}`
