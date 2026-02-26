@@ -56,18 +56,17 @@ Respond ONLY with valid JSON array, no other text. Example:
 
     let result;
 
-    // Check if content is a base64 image (data URL)
-    if (content.startsWith("data:image/")) {
-      // Extract mime type and base64 data
-      const match = content.match(/^data:(image\/\w+);base64,(.+)$/);
+    // Check if content is a base64 data URL (image or PDF)
+    if (content.startsWith("data:")) {
+      const match = content.match(/^data:([^;]+);base64,(.+)$/);
       if (!match) {
-        return NextResponse.json({ error: "Invalid image data" }, { status: 400 });
+        return NextResponse.json({ error: "Invalid file data" }, { status: 400 });
       }
       const mimeType = match[1];
       const base64Data = match[2];
 
       result = await model.generateContent([
-        prompt + "\n\nAnalyze this image and extract actionable tasks from it:",
+        prompt + "\n\nAnalyze this file and extract actionable tasks from it:",
         {
           inlineData: {
             mimeType,

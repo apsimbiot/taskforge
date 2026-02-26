@@ -84,8 +84,15 @@ export function AIGenerateModal({
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "Failed to generate tasks")
+        const text = await response.text()
+        let errorMsg = "Failed to generate tasks"
+        try {
+          const data = JSON.parse(text)
+          errorMsg = data.error || errorMsg
+        } catch {
+          errorMsg = `Server error (${response.status})`
+        }
+        throw new Error(errorMsg)
       }
 
       const data = await response.json()
@@ -268,7 +275,7 @@ export function AIGenerateModal({
                   const file = e.dataTransfer.files?.[0]
                   if (!file) return
                   setFileName(file.name)
-                  if (file.type.startsWith("image/")) {
+                  if (file.type.startsWith("image/") || file.type === "application/pdf") {
                     const reader = new FileReader()
                     reader.onload = () => setContent(reader.result as string)
                     reader.readAsDataURL(file)
@@ -303,6 +310,7 @@ export function AIGenerateModal({
                     const file = e.target.files?.[0]
                     if (!file) return
                     setFileName(file.name)
+                    setError(null)
                     
                     // For images, convert to base64
                     if (file.type.startsWith("image/")) {
@@ -311,8 +319,15 @@ export function AIGenerateModal({
                         setContent(reader.result as string)
                       }
                       reader.readAsDataURL(file)
+                    } else if (file.type === "application/pdf") {
+                      // PDF needs server-side parsing — send as base64
+                      const reader = new FileReader()
+                      reader.onload = () => {
+                        setContent(reader.result as string)
+                      }
+                      reader.readAsDataURL(file)
                     } else {
-                      // For text files, read as text
+                      // For text files (.txt, .md), read as text
                       const text = await file.text()
                       setContent(text)
                     }
