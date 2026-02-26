@@ -8,9 +8,11 @@ import Image from "@tiptap/extension-image"
 import Link from "@tiptap/extension-link"
 import Underline from "@tiptap/extension-underline"
 import Typography from "@tiptap/extension-typography"
+import Mention from "@tiptap/extension-mention"
 import { useCallback, useRef } from "react"
 import { Bold, Italic, Underline as UnderlineIcon, Strikethrough, Code, Quote, List, ListOrdered, ImageIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
+import suggestion from "./mention-suggestion"
 
 interface RichTextEditorProps {
   content: string | Record<string, unknown> | null
@@ -19,6 +21,7 @@ interface RichTextEditorProps {
   minHeight?: string
   className?: string
   editable?: boolean
+  mentions?: { id: string; name: string; email: string }[]
 }
 
 async function uploadImage(file: File): Promise<string | null> {
@@ -35,20 +38,35 @@ async function uploadImage(file: File): Promise<string | null> {
   }
 }
 
-export function RichTextEditor({ content, onChange, placeholder, minHeight = "150px", className, editable = true }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, placeholder, minHeight = "150px", className, editable = true, mentions }: RichTextEditorProps) {
   const editorRef = useRef<ReturnType<typeof useEditor>>(null)
 
+  // Build extensions array
+  const extensions: any[] = [
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3] },
+    }),
+    Placeholder.configure({ placeholder: placeholder || "Type something..." }),
+    Image.configure({ inline: false, allowBase64: false }),
+    Link.configure({ openOnClick: false, autolink: true }),
+    Underline,
+    Typography,
+  ]
+
+  // Add Mention extension if mentions are provided
+  if (mentions && mentions.length > 0) {
+    extensions.push(
+      Mention.configure({
+        HTMLAttributes: {
+          class: "mention",
+        },
+        suggestion: suggestion(mentions),
+      })
+    )
+  }
+
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
-      }),
-      Placeholder.configure({ placeholder: placeholder || "Type something..." }),
-      Image.configure({ inline: false, allowBase64: false }),
-      Link.configure({ openOnClick: false, autolink: true }),
-      Underline,
-      Typography,
-    ],
+    extensions,
     content: typeof content === "string" ? content : (content || ""),
     editable,
     immediatelyRender: false,

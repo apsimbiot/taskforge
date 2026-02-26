@@ -251,8 +251,6 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
   // Comment input
   const [newComment, setNewComment] = useState<Record<string, unknown> | null>(null)
-  const [newCommentText, setNewCommentText] = useState("")
-  const [isCommentPreview, setIsCommentPreview] = useState(false)
 
   // Assignee picker
   const [assigneePopoverOpen, setAssigneePopoverOpen] = useState(false)
@@ -479,14 +477,14 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
   // Comment handlers
   const handleAddComment = () => {
-    if (!newCommentText.trim() || !task) return
+    if (!newComment || !task) return
+    const text = extractTextFromTiptap(newComment)
+    if (!text.trim()) return
     createCommentMutation.mutate({
       taskId: task?.id,
-      content: newCommentText.trim(),
+      content: JSON.stringify(newComment),
     })
     setNewComment(null)
-    setNewCommentText("")
-    setIsCommentPreview(false)
   }
 
   // Assignee handlers
@@ -1615,27 +1613,48 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
             {/* Comments */}
             {activityTab === "all" || activityTab === "comments" ? (
               comments.length > 0 ? (
-                comments.map((comment) => (
-                  <div key={comment.id} className="flex gap-2">
-                    <Avatar className="h-7 w-7 flex-shrink-0">
-                      <AvatarImage src={comment.user.avatarUrl || undefined} />
-                      <AvatarFallback className="text-xs">
-                        {getInitials(comment.user.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{comment.user.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeTime(comment.createdAt)}
-                        </span>
-                      </div>
-                      <div className="text-sm mt-1">
-                        <MarkdownRenderer content={comment.content} />
+                comments.map((comment) => {
+                  // Check if content is JSON (TipTap format)
+                  let contentToRender = comment.content
+                  try {
+                    const parsed = JSON.parse(comment.content)
+                    if (parsed && parsed.type === "doc") {
+                      contentToRender = parsed
+                    }
+                  } catch {
+                    // Not JSON, use as plain text
+                  }
+                  return (
+                    <div key={comment.id} className="flex gap-2">
+                      <Avatar className="h-7 w-7 flex-shrink-0">
+                        <AvatarImage src={comment.user.avatarUrl || undefined} />
+                        <AvatarFallback className="text-xs">
+                          {getInitials(comment.user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{comment.user.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatRelativeTime(comment.createdAt)}
+                          </span>
+                        </div>
+                        <div className="text-sm mt-1">
+                          {typeof contentToRender === "object" ? (
+                            <RichTextEditor
+                              content={contentToRender as Record<string, unknown>}
+                              onChange={() => {}}
+                              editable={false}
+                              minHeight="auto"
+                            />
+                          ) : (
+                            <MarkdownRenderer content={contentToRender as string} />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  )
+                })
               ) : (
                 <p className="text-xs text-muted-foreground italic text-center py-4">No comments yet</p>
               )
@@ -1651,39 +1670,18 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                 <AvatarFallback className="text-xs">You</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                {isCommentPreview ? (
-                  <div className="border rounded-md p-2 min-h-[60px] max-h-[150px] overflow-auto bg-muted/30">
-                    <MarkdownRenderer content={newCommentText} />
-                  </div>
-                ) : (
-                  <RichTextEditor
-                    content={newComment}
-                    onChange={(json) => setNewComment(json)}
-                    placeholder="Write a comment..."
-                    minHeight="60px"
-                  />
-                )}
-                <div className="flex items-center justify-between mt-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsCommentPreview(!isCommentPreview)}
-                    className="h-7 text-xs"
-                  >
-                    {isCommentPreview ? (
-                      <>
-                        <Edit3 className="h-3 w-3 mr-1" /> Edit
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="h-3 w-3 mr-1" /> Preview
-                      </>
-                    )}
-                  </Button>
+                <RichTextEditor
+                  content={newComment}
+                  onChange={(json) => setNewComment(json)}
+                  placeholder="Write a comment... Use @ to mention someone"
+                  minHeight="60px"
+                  mentions={workspaceMembers.map(m => ({ id: m.id, name: m.name || m.email, email: m.email }))}
+                />
+                <div className="flex items-center justify-end mt-2">
                   <Button
                     size="sm"
                     onClick={handleAddComment}
-                    disabled={!newCommentText.trim()}
+                    disabled={!newComment}
                     className="h-7"
                   >
                     Send
