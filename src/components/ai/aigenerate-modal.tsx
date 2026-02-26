@@ -275,8 +275,8 @@ export function AIGenerateModal({
                   const file = e.dataTransfer.files?.[0]
                   if (!file) return
                   setFileName(file.name)
-                  if (file.size > 4 * 1024 * 1024) {
-                    setError("File too large. Max 4MB.")
+                  if (file.size > 2 * 1024 * 1024) {
+                    setError("File too large. Max 2MB.")
                     setFileName(null)
                     return
                   }
@@ -325,9 +325,9 @@ export function AIGenerateModal({
                       }
                       reader.readAsDataURL(file)
                     } else if (file.type === "application/pdf") {
-                      // Check file size — max 4MB for Gemini
-                      if (file.size > 4 * 1024 * 1024) {
-                        setError("PDF too large. Max 4MB. Try a smaller file or paste the text directly.")
+                      // Check file size — max 2MB for Gemini
+                      if (file.size > 2 * 1024 * 1024) {
+                        setError("PDF too large. Max 2MB. Try a smaller file or paste the text directly.")
                         setFileName(null)
                         return
                       }
