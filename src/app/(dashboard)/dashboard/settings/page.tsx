@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import { User, Lock, Building2, Loader2, LogOut } from "lucide-react"
+import { User, Lock, Building2, Loader2, LogOut, Palette } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
 import { useWorkspaces, useUpdateUser, useUpdateUserPassword, useUpdateWorkspace } from "@/hooks/useSettings"
 import { toast } from "sonner"
+import { ThemeSwitcher } from "@/components/theme-switcher"
 
 export default function SettingsPage() {
   const router = useRouter()
@@ -144,6 +145,10 @@ export default function SettingsPage() {
             <User className="h-4 w-4" />
             Profile
           </TabsTrigger>
+          <TabsTrigger value="appearance" className="gap-2">
+            <Palette className="h-4 w-4" />
+            Appearance
+          </TabsTrigger>
           <TabsTrigger value="account" className="gap-2">
             <Lock className="h-4 w-4" />
             Account
@@ -230,6 +235,21 @@ export default function SettingsPage() {
                   </Button>
                 </div>
               </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Appearance Tab */}
+        <TabsContent value="appearance">
+          <Card>
+            <CardHeader>
+              <CardTitle>Theme</CardTitle>
+              <CardDescription>
+                Customize the look and feel of your TaskForge interface
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ThemeSwitcher />
             </CardContent>
           </Card>
         </TabsContent>
