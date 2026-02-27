@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
+import { useTaskPanel } from "@/store/useTaskPanel"
   LayoutGrid,
   Calendar,
   BarChart3,
@@ -233,6 +234,7 @@ function WorkloadChart({ data }: { data: { name: string; tasks: number }[] }) {
 
 function ActivityItem({
   item,
+  onTaskClick,
 }: {
   item: {
     id: string
@@ -241,6 +243,7 @@ function ActivityItem({
     updatedAt: string
     creatorName: string
   }
+  onTaskClick?: (taskId: string) => void
 }) {
   const statusBadge: Record<string, string> = {
     open: "bg-gray-100 text-gray-700",
@@ -263,7 +266,12 @@ function ActivityItem({
         <p className="text-sm truncate">
           <span className="font-medium">{item.creatorName}</span>{" "}
           <span className="text-muted-foreground">updated</span>{" "}
-          <span className="font-medium">{item.title}</span>
+          <button
+            onClick={() => onTaskClick?.(item.id)}
+            className="font-medium hover:text-primary hover:underline cursor-pointer"
+          >
+            {item.title}
+          </button>
         </p>
         <p className="text-xs text-muted-foreground">
           {formatDistanceToNow(new Date(item.updatedAt), { addSuffix: true })}
@@ -291,6 +299,7 @@ export default function DashboardPage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [createWsOpen, setCreateWsOpen] = useState(false)
   const createWorkspaceMutation = useCreateWorkspace()
+  const { setSelectedTask } = useTaskPanel()
 
   // Auto-select first workspace once loaded
   useEffect(() => {
@@ -467,7 +476,12 @@ export default function DashboardPage() {
                         <AlertTriangle className="h-3 w-3 text-red-500" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm truncate font-medium">{item.title}</p>
+                        <button
+                          onClick={() => setSelectedTask(item.id)}
+                          className="text-sm truncate font-medium hover:text-primary hover:underline cursor-pointer text-left w-full"
+                        >
+                          {item.title}
+                        </button>
                         <p className="text-xs text-muted-foreground">
                           {item.status?.replace(/_/g, " ")} • {item.priority}
                         </p>
