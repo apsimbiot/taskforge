@@ -302,7 +302,7 @@ export default function DashboardPage() {
   const createWorkspaceMutation = useCreateWorkspace()
   const { setSelectedTask, selectedTaskId, isOpen, close } = useTaskPanel()
   const { data: selectedTask, isLoading: taskLoading } = useTask(selectedTaskId ?? undefined)
-  const { data: statuses = [] } = useStatuses()
+  const { data: statuses = [] } = useStatuses(selectedTask?.listId)
 
   // Auto-select first workspace once loaded
   useEffect(() => {
