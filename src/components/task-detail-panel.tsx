@@ -135,6 +135,45 @@ function getInitials(name: string | null): string {
     .slice(0, 2)
 }
 
+/** Convert snake_case to Title Case */
+function humanize(str: string | null | undefined): string {
+  if (!str) return "empty"
+  // Try to parse as date if it looks like an ISO string
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    try {
+      const d = new Date(str)
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      }
+    } catch { /* not a date */ }
+  }
+  return str
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+/** Format a field name for display */
+function humanizeField(field: string): string {
+  const fieldNames: Record<string, string> = {
+    status: "status",
+    priority: "priority",
+    due_date: "due date",
+    dueDate: "due date",
+    title: "title",
+    description: "description",
+    order: "position",
+    parent_task_id: "parent task",
+    parentTaskId: "parent task",
+    sprint_id: "sprint",
+    sprintId: "sprint",
+    list_id: "list",
+    listId: "list",
+    estimated_hours: "estimated hours",
+    estimatedHours: "estimated hours",
+  }
+  return fieldNames[field] || field.replace(/_/g, " ").replace(/([A-Z])/g, " $1").toLowerCase().trim()
+}
+
 function getActivityActionText(activity: ActivityResponse): string {
   const { action, field, oldValue, newValue } = activity
   switch (action) {
@@ -142,31 +181,41 @@ function getActivityActionText(activity: ActivityResponse): string {
       return "created this task"
     case "updated":
       if (field) {
-        return `changed ${field} from ${oldValue || "empty"} to ${newValue || "empty"}`
+        const fieldName = humanizeField(field)
+        // Skip showing order/position changes — too noisy
+        if (field === "order") return `reordered this task`
+        const from = humanize(oldValue)
+        const to = humanize(newValue)
+        if (!oldValue || oldValue === "empty") {
+          return `set ${fieldName} to ${to}`
+        }
+        return `changed ${fieldName} from "${from}" to "${to}"`
       }
-      return `updated task`
+      return "updated this task"
     case "added_subtask":
-      return `added subtask ${newValue || ""}`
+    case "subtask_created":
+      return `added a subtask${newValue ? `: "${humanize(newValue)}"` : ""}`
     case "added_dependency":
-      return "added dependency"
+      return "added a dependency"
     case "removed_dependency":
-      return "removed dependency"
+      return "removed a dependency"
     case "added_comment":
       return "added a comment"
     case "added_attachment":
-      return `uploaded ${newValue || "file"}`
+      return `uploaded ${newValue ? `"${newValue}"` : "a file"}`
     case "removed_attachment":
-      return `deleted attachment ${oldValue || "file"}`
+      return `removed ${oldValue ? `"${oldValue}"` : "an attachment"}`
     case "added_assignee":
-      return `assigned ${newValue || "user"}`
+      return `assigned ${newValue || "someone"}`
     case "removed_assignee":
-      return `unassigned ${oldValue || "user"}`
+      return `unassigned ${oldValue || "someone"}`
     case "started_timer":
       return "started time tracking"
     case "stopped_timer":
       return `stopped time tracking (${newValue || "0 minutes"})`
     default:
-      return action
+      // Humanize unknown actions
+      return humanize(action)
   }
 }
 
