@@ -67,7 +67,8 @@ export async function POST(
       limit: 1,
     });
 
-    const startOrder = existingTasks.length > 0 ? existingTasks[0].order + 1 : 0;
+    const firstTask = existingTasks[0];
+    const startOrder = firstTask ? firstTask.order + 1 : 0;
 
     // Create all tasks
     const createdTasks = await Promise.all(
