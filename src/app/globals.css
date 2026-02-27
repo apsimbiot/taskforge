@@ -325,4 +325,10 @@
   --shadow-lg: 0px 1px 3px 0px hsl(0 0% 10.1961% / 0.10), 0px 4px 6px -1px hsl(0 0% 10.1961% / 0.10);
   --shadow-xl: 0px 1px 3px 0px hsl(0 0% 10.1961% / 0.10), 0px 8px 10px -1px hsl(0 0% 10.1961% / 0.10);
   --shadow-2xl: 0px 1px 3px 0px hsl(0 0% 10.1961% / 0.25);
+}.tiptap .mention {
+  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.25rem;
+  font-weight: 500;
 }

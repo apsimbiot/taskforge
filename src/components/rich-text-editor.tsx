@@ -53,20 +53,18 @@ export function RichTextEditor({ content, onChange, placeholder, minHeight = "15
     Typography,
   ]
 
-  // Add Mention extension if mentions are provided
-  if (mentions && mentions.length > 0) {
-    extensions.push(
-      Mention.configure({
-        HTMLAttributes: {
-          class: "mention",
-        },
-        suggestion: {
-          char: "@",
-          ...suggestion(mentions),
-        },
-      })
-    )
-  }
+  // Always add Mention extension (works with empty array too)
+  extensions.push(
+    Mention.configure({
+      HTMLAttributes: {
+        class: "mention",
+      },
+      suggestion: {
+        char: "@",
+        ...suggestion(mentions || []),
+      },
+    })
+  )
 
   const editor = useEditor({
     extensions,
