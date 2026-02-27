@@ -18,8 +18,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { useWorkspaces, useDashboardStats, useCreateWorkspace } from "@/hooks/useQueries"
+import { useWorkspaces, useDashboardStats, useCreateWorkspace, useTask, useStatuses } from "@/hooks/useQueries"
 import { CreateWorkspaceDialog } from "@/components/create-workspace-dialog"
+import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { format, formatDistanceToNow } from "date-fns"
@@ -299,7 +300,9 @@ export default function DashboardPage() {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(null)
   const [createWsOpen, setCreateWsOpen] = useState(false)
   const createWorkspaceMutation = useCreateWorkspace()
-  const { setSelectedTask } = useTaskPanel()
+  const { setSelectedTask, selectedTaskId, isOpen, close } = useTaskPanel()
+  const { data: selectedTask, isLoading: taskLoading } = useTask(selectedTaskId ?? undefined)
+  const { data: statuses = [] } = useStatuses()
 
   // Auto-select first workspace once loaded
   useEffect(() => {
@@ -576,6 +579,13 @@ export default function DashboardPage() {
             }
           )
         }}
+      />
+
+      <TaskDetailPanel
+        task={selectedTask}
+        open={isOpen}
+        onClose={close}
+        statuses={statuses}
       />
     </div>
   )
