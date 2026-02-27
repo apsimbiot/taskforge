@@ -586,6 +586,7 @@ export default function DashboardPage() {
         open={isOpen}
         onClose={close}
         statuses={statuses}
+        workspaceId={selectedWorkspaceId ?? undefined}
       />
     </div>
   )
