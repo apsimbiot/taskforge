@@ -60,7 +60,10 @@ export function RichTextEditor({ content, onChange, placeholder, minHeight = "15
         HTMLAttributes: {
           class: "mention",
         },
-        suggestion: suggestion(mentions),
+        suggestion: {
+          char: "@",
+          ...suggestion(mentions),
+        },
       })
     )
   }
