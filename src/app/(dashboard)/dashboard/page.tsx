@@ -88,11 +88,14 @@ function StatusDonutChart({
           </Pie>
           <Tooltip
             contentStyle={{
-              background: "hsl(var(--background))",
-              border: "1px solid hsl(var(--border))",
+              background: "#1f2937",
+              border: "1px solid #374151",
               borderRadius: "6px",
               fontSize: "12px",
+              color: "#e5e7eb",
             }}
+            labelStyle={{ color: "#e5e7eb" }}
+            itemStyle={{ color: "#e5e7eb" }}
           />
         </PieChart>
       </ResponsiveContainer>
@@ -141,32 +144,35 @@ function CompletedOverTimeChart({
   return (
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={chartData} margin={{ top: 5, right: 10, bottom: 5, left: -10 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
         <XAxis
           dataKey="date"
-          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 10, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
           interval={6}
         />
         <YAxis
-          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 10, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
           allowDecimals={false}
         />
         <Tooltip
           contentStyle={{
-            background: "hsl(var(--background))",
-            border: "1px solid hsl(var(--border))",
+            background: "#1f2937",
+            border: "1px solid #374151",
             borderRadius: "6px",
             fontSize: "12px",
+            color: "#e5e7eb",
           }}
+          labelStyle={{ color: "#e5e7eb" }}
+          itemStyle={{ color: "#e5e7eb" }}
         />
         <Line
           type="monotone"
           dataKey="count"
-          stroke="hsl(var(--primary))"
+          stroke="#f97316"
           strokeWidth={2}
           dot={false}
           name="Completed"
@@ -190,10 +196,10 @@ function WorkloadChart({ data }: { data: { name: string; tasks: number }[] }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, bottom: 5, left: 60 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#374151" horizontal={false} />
         <XAxis
           type="number"
-          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 10, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
           allowDecimals={false}
@@ -201,20 +207,23 @@ function WorkloadChart({ data }: { data: { name: string; tasks: number }[] }) {
         <YAxis
           type="category"
           dataKey="name"
-          tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+          tick={{ fontSize: 11, fill: "#9ca3af" }}
           tickLine={false}
           axisLine={false}
           width={60}
         />
         <Tooltip
           contentStyle={{
-            background: "hsl(var(--background))",
-            border: "1px solid hsl(var(--border))",
+            background: "#1f2937",
+            border: "1px solid #374151",
             borderRadius: "6px",
             fontSize: "12px",
+            color: "#e5e7eb",
           }}
+          labelStyle={{ color: "#e5e7eb" }}
+          itemStyle={{ color: "#e5e7eb" }}
         />
-        <Bar dataKey="tasks" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20} />
+        <Bar dataKey="tasks" fill="#f97316" radius={[0, 4, 4, 0]} barSize={20} />
       </BarChart>
     </ResponsiveContainer>
   )
