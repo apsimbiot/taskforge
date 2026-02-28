@@ -28,10 +28,13 @@ export const workspaces = pgTable("workspaces", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
+  subdomain: varchar("subdomain", { length: 63 }).unique(), // For multi-tenant subdomains
   ownerId: uuid("owner_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   logoUrl: text("logo_url"),
+  plan: varchar("plan", { length: 20 }).default("free"), // free, pro, enterprise
+  status: varchar("status", { length: 20 }).default("active"), // active, suspended, trial
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
