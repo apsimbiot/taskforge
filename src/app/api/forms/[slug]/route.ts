@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { db } from "@/db";
-import { forms, tasks, lists, spaces, workspaces } from "@/db/schema";
-import { eq, or } from "drizzle-orm";
+import { forms, tasks, lists, spaces, workspaces, workspaceMembers } from "@/db/schema";
+import { eq, or, and } from "drizzle-orm";
 import { z } from "zod";
 
 // GET /api/forms/[slug] - Public form (no auth required)
@@ -17,7 +18,22 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
     }
 
-    if (!form.isPublic) {
+    // Only return form metadata if it's public OR user is authenticated and member of the workspace
+    const session = await auth();
+    let hasAccess = form.isPublic;
+
+    if (!hasAccess && session?.user?.id) {
+      // Check if user is a member of the workspace
+      const membership = await db.query.workspaceMembers.findFirst({
+        where: and(
+          eq(workspaceMembers.workspaceId, form.workspaceId),
+          eq(workspaceMembers.userId, session.user.id)
+        ),
+      });
+      hasAccess = !!membership;
+    }
+
+    if (!hasAccess) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
     }
 
@@ -56,6 +72,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 // DELETE /api/forms/[slug] - Delete a form (slug can also be an id)
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
+    // Check authentication
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { slug } = await params;
 
     // Try to find by slug or by id
@@ -65,6 +87,18 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     if (!form) {
       return NextResponse.json({ error: "Form not found" }, { status: 404 });
+    }
+
+    // Check if user is a member of the workspace with admin/owner role
+    const membership = await db.query.workspaceMembers.findFirst({
+      where: and(
+        eq(workspaceMembers.workspaceId, form.workspaceId),
+        eq(workspaceMembers.userId, session.user.id)
+      ),
+    });
+
+    if (!membership || !["owner", "admin"].includes(membership.role)) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
     await db.delete(forms).where(eq(forms.id, form.id));
