@@ -8,7 +8,9 @@ import { z } from "zod";
 const createWorkspaceSchema = z.object({
   name: z.string().min(1).max(255),
   slug: z.string().min(1).max(255).regex(/^[a-z0-9-]+$/),
+  subdomain: z.string().min(1).max(63).regex(/^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/).optional(),
   logoUrl: z.string().optional(),
+  plan: z.enum(["free", "pro", "enterprise"]).optional(),
 });
 
 export async function GET() {
@@ -23,7 +25,10 @@ export async function GET() {
         id: workspaces.id,
         name: workspaces.name,
         slug: workspaces.slug,
+        subdomain: workspaces.subdomain,
         logoUrl: workspaces.logoUrl,
+        plan: workspaces.plan,
+        status: workspaces.status,
         createdAt: workspaces.createdAt,
         role: workspaceMembers.role,
       })
@@ -63,14 +68,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check subdomain availability if provided
+    if (validatedData.subdomain) {
+      const existingSubdomain = await db.query.workspaces.findFirst({
+        where: eq(workspaces.subdomain, validatedData.subdomain.toLowerCase()),
+      });
+
+      if (existingSubdomain) {
+        return NextResponse.json(
+          { error: "Subdomain is not available" },
+          { status: 409 }
+        );
+      }
+    }
+
     // Create workspace with owner as member
     const [workspace] = await db
       .insert(workspaces)
       .values({
         name: validatedData.name,
         slug: validatedData.slug,
+        subdomain: validatedData.subdomain?.toLowerCase(),
         ownerId: session.user.id,
         logoUrl: validatedData.logoUrl,
+        plan: validatedData.plan || "free",
+        status: "active",
       })
       .returning();
 
