@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Breadcrumb } from "@/components/breadcrumb"
 import { StatusBadge } from "@/components/status-badge"
-import { TimeTracker } from "@/components/time-tracker"
+// TimeTracker removed - was global timer not tied to any task
 import { KanbanBoard } from "@/components/kanban-board"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { useTaskPanel } from "@/store/useTaskPanel"
@@ -688,7 +688,6 @@ export default function ListPage({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <TimeTracker className="mr-2" />
             <div className="flex items-center border rounded-md overflow-hidden">
               <Button
                 variant={viewMode === "list" ? "secondary" : "ghost"}
