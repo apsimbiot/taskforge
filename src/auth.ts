@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "taskforge.dev";
+const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "72.62.227.33.sslip.io";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -79,7 +79,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   cookies: {
     sessionToken: {
-      name: `__secure-session-token`,
+      name: `session-token`,
       options: {
         httpOnly: true,
         sameSite: "lax",
