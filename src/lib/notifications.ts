@@ -1,5 +1,7 @@
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
+import { notifications, users } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { sendTaskAssignedEmail, sendMentionEmail, sendTaskDueSoonEmail } from "./email";
 
 // Notification types
 export type NotificationType = 
@@ -9,7 +11,8 @@ export type NotificationType =
   | "mention"
   | "sprint_started"
   | "sprint_ended"
-  | "sprint_completed";
+  | "sprint_completed"
+  | "task_due_soon";
 
 interface CreateNotificationParams {
   userId: string;
@@ -18,6 +21,28 @@ interface CreateNotificationParams {
   message?: string;
   entityType?: string;
   entityId?: string;
+  taskTitle?: string;
+  mentionedBy?: string;
+  assignedBy?: string;
+  dueDate?: Date;
+}
+
+/**
+ * Check if user has email notifications enabled
+ */
+async function shouldSendEmail(userId: string): Promise<boolean> {
+  try {
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        emailNotifications: true,
+        email: true,
+      },
+    });
+    return user?.emailNotifications !== false && !!user?.email;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -32,6 +57,42 @@ export async function createNotification(params: CreateNotificationParams) {
     entityType: params.entityType || null,
     entityId: params.entityId || null,
   }).returning();
+
+  // Try to send email notification (async, don't await)
+  const sendEmail = async () => {
+    const shouldEmail = await shouldSendEmail(params.userId);
+    if (!shouldEmail) return;
+
+    const user = await db.query.users.findFirst({
+      where: eq(users.id, params.userId),
+      columns: { email: true, name: true },
+    });
+    if (!user?.email) return;
+
+    try {
+      switch (params.type) {
+        case "task_assigned":
+          if (params.taskTitle && params.assignedBy) {
+            await sendTaskAssignedEmail(user.email, params.taskTitle, params.assignedBy);
+          }
+          break;
+        case "mention":
+          if (params.taskTitle && params.mentionedBy) {
+            await sendMentionEmail(user.email, params.taskTitle, params.mentionedBy);
+          }
+          break;
+        case "task_due_soon":
+          if (params.taskTitle && params.dueDate) {
+            await sendTaskDueSoonEmail(user.email, params.taskTitle, params.dueDate);
+          }
+          break;
+      }
+    } catch (error) {
+      console.error("[Notifications] Failed to send email:", error);
+    }
+  };
+
+  sendEmail();
 
   return notification;
 }

@@ -141,6 +141,12 @@ export async function POST(
       },
     });
 
+    // Get the current user who assigned the task
+    const currentUser = await db.query.users.findFirst({
+      where: eq(users.id, session.user.id),
+      columns: { name: true },
+    });
+
     // Notify the assigned user
     await createNotification({
       userId: validatedData.userId,
@@ -149,6 +155,8 @@ export async function POST(
       message: `You have been assigned to a new task`,
       entityType: "task",
       entityId: taskId,
+      taskTitle: access.task.title,
+      assignedBy: currentUser?.name || "Someone",
     });
 
     // Log activity

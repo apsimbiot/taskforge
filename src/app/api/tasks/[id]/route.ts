@@ -5,6 +5,7 @@ import { tasks, lists, spaces, workspaceMembers, taskActivities, taskAssignees }
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { runAutomations } from "@/lib/automations";
+import { autoCreateDueDateReminder } from "@/lib/reminders";
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
@@ -240,6 +241,24 @@ export async function PATCH(
         });
       } catch (err) {
         console.error("Error running status_change automations:", err);
+      }
+    }
+
+    // Auto-create reminder for 1 day before due date when due date is set
+    if (validatedData.dueDate !== undefined) {
+      const newDueDate = validatedData.dueDate ? new Date(validatedData.dueDate) : null;
+      const oldDueDate = oldTask.dueDate ? new Date(oldTask.dueDate) : null;
+      
+      // Only create reminder if:
+      // 1. A new due date is being set (was null, now has value)
+      // 2. Or the due date is being changed to a later date
+      if (newDueDate && (!oldDueDate || newDueDate.getTime() > oldDueDate.getTime())) {
+        try {
+          await autoCreateDueDateReminder(taskId, session.user.id, newDueDate);
+        } catch (err) {
+          console.error("Error creating auto-reminder:", err);
+          // Don't fail the request if reminder creation fails
+        }
       }
     }
 

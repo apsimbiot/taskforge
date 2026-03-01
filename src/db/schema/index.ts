@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   passwordHash: text("password_hash"),
   avatarUrl: text("avatar_url"),
+  emailNotifications: boolean("email_notifications").default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -362,6 +363,30 @@ export const notifications = pgTable(
   ]
 );
 
+// ─── Reminders ─────────────────────────────────────────────────────────────────
+export const reminders = pgTable(
+  "reminders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    remindAt: timestamp("remind_at").notNull(),
+    type: varchar("type", { length: 20 }).default("notification"), // notification, email, both
+    sent: boolean("sent").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [
+    index("reminders_task_idx").on(t.taskId),
+    index("reminders_user_idx").on(t.userId),
+    index("reminders_sent_idx").on(t.sent),
+    index("reminders_remind_at_idx").on(t.remindAt),
+  ]
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RELATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -375,6 +400,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   taskActivities: many(taskActivities),
   timeEntries: many(timeEntries),
   notifications: many(notifications),
+  reminders: many(reminders),
 }));
 
 export const workspacesRelations = relations(workspaces, ({ one, many }) => ({
@@ -456,6 +482,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   timeEntries: many(timeEntries),
   taskLabels: many(taskLabels),
   attachments: many(taskAttachments),
+  reminders: many(reminders),
 }));
 
 export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
@@ -605,6 +632,17 @@ export const viewsRelations = relations(views, ({ one }) => ({
 export const notificationsRelations = relations(notifications, ({ one }) => ({
   user: one(users, {
     fields: [notifications.userId],
+    references: [users.id],
+  }),
+}));
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  task: one(tasks, {
+    fields: [reminders.taskId],
+    references: [tasks.id],
+  }),
+  user: one(users, {
+    fields: [reminders.userId],
     references: [users.id],
   }),
 }));
@@ -829,3 +867,5 @@ export type KeyResult = typeof keyResults.$inferSelect;
 export type NewKeyResult = typeof keyResults.$inferInsert;
 export type TaskAttachment = typeof taskAttachments.$inferSelect;
 export type NewTaskAttachment = typeof taskAttachments.$inferInsert;
+export type Reminder = typeof reminders.$inferSelect;
+export type NewReminder = typeof reminders.$inferInsert;

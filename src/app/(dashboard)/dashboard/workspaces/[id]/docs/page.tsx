@@ -69,6 +69,17 @@ function DocTreeItem({
   const [expanded, setExpanded] = useState(false)
   const hasChildren = doc.children && doc.children.length > 0
 
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+    if (days === 0) return "Today"
+    if (days === 1) return "Yesterday"
+    if (days < 7) return `${days} days ago`
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  }
+
   return (
     <div>
       <div
@@ -96,7 +107,7 @@ function DocTreeItem({
           <span className="w-5" />
         )}
         <button
-          className="flex items-center gap-2 flex-1 text-left"
+          className="flex items-center gap-2 flex-1 text-left min-w-0"
           onClick={() =>
             router.push(`/dashboard/workspaces/${workspaceId}/docs/${doc.id}`)
           }
@@ -107,6 +118,9 @@ function DocTreeItem({
             <FileText className="h-4 w-4 text-muted-foreground" />
           )}
           <span className="text-sm truncate">{doc.title}</span>
+          <span className="text-xs text-muted-foreground ml-auto mr-2 shrink-0">
+            {formatDate(doc.updatedAt)}
+          </span>
         </button>
         <Button
           variant="ghost"

@@ -12,7 +12,7 @@ import {
 import { useDocument, useUpdateDocument, useDeleteDocument } from "@/hooks/useDocuments"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/rich-text-editor"
 
 export default function DocDetailPage() {
   const params = useParams()
@@ -25,30 +25,45 @@ export default function DocDetailPage() {
   const deleteMutation = useDeleteDocument()
 
   const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
+  const [content, setContent] = useState<Record<string, unknown> | null>(null)
   const [dirty, setDirty] = useState(false)
 
   useEffect(() => {
     if (data?.document) {
       setTitle(data.document.title)
       const c = data.document.content
-      if (typeof c === "string") {
-        setContent(c)
-      } else if (c && typeof c === "object" && "text" in c) {
-        setContent(String((c as any).text || ""))
+      // Handle TipTap JSON content or legacy text format
+      if (c && typeof c === "object" && "type" in c) {
+        // TipTap JSON format
+        setContent(c as Record<string, unknown>)
+      } else if (typeof c === "string") {
+        // Legacy text format - convert to TipTap paragraph
+        setContent({
+          type: "doc",
+          content: [{ type: "paragraph", content: [{ type: "text", text: c }] }],
+        })
       } else {
-        setContent("")
+        // Empty content
+        setContent({
+          type: "doc",
+          content: [{ type: "paragraph" }],
+        })
       }
       setDirty(false)
     }
   }, [data])
+
+  const handleContentChange = useCallback((newContent: Record<string, unknown>) => {
+    setContent(newContent)
+    setDirty(true)
+  }, [])
 
   const handleSave = useCallback(() => {
     updateMutation.mutate({
       documentId: docId,
       data: {
         title,
-        content: { text: content },
+        content,
       },
     })
     setDirty(false)
@@ -139,7 +154,7 @@ export default function DocDetailPage() {
 
       {/* Editor */}
       <div className="flex-1 overflow-auto">
-        <div className="max-w-3xl mx-auto py-8 px-6 space-y-4">
+        <div className="max-w-4xl mx-auto py-8 px-6 space-y-4">
           <Input
             value={title}
             onChange={(e) => {
@@ -149,14 +164,13 @@ export default function DocDetailPage() {
             placeholder="Untitled Document"
             className="text-3xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/40"
           />
-          <Textarea
-            value={content}
-            onChange={(e) => {
-              setContent(e.target.value)
-              setDirty(true)
-            }}
+          <RichTextEditor
+            content={content}
+            onChange={handleContentChange}
             placeholder="Start writing..."
-            className="min-h-[500px] border-none shadow-none p-0 resize-none focus-visible:ring-0 text-base leading-relaxed placeholder:text-muted-foreground/40"
+            minHeight="500px"
+            showToolbar={true}
+            className="border rounded-lg overflow-hidden"
           />
         </div>
       </div>

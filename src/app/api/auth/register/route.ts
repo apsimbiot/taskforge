@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { users, workspaces, workspaceMembers, spaces } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { isSubdomainAvailable } from "@/lib/tenant";
+import { sendWelcomeEmail } from "@/lib/email";
 
 // Simple in-memory rate limiter: max 5 requests per IP per minute
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -142,6 +143,9 @@ export async function POST(request: NextRequest) {
 
       return { user: newUser, workspace: newWorkspace, space: defaultSpace };
     });
+
+    // Send welcome email (async, don't wait)
+    sendWelcomeEmail(result.user.email, result.user.name).catch(console.error);
 
     return NextResponse.json(
       {
