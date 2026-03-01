@@ -191,6 +191,150 @@ function InlineSubtaskInput({
   )
 }
 
+// New Task Dialog - works from any view (board, gantt, calendar)
+function NewTaskDialog({
+  isOpen,
+  onClose,
+  listId,
+  availableStatuses,
+  availablePriorities,
+  onCreateTask,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  listId: string
+  availableStatuses: { value: string; label: string; color: string }[]
+  availablePriorities: { value: string; label: string }[]
+  onCreateTask: (data: { listId: string; title: string; status?: string; priority?: string; dueDate?: string }) => void
+}) {
+  const [title, setTitle] = useState("")
+  const [status, setStatus] = useState(availableStatuses[0]?.value || "todo")
+  const [priority, setPriority] = useState("medium")
+  const [dueDate, setDueDate] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Reset form when dialog opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setTitle("")
+      setStatus(availableStatuses[0]?.value || "todo")
+      setPriority("medium")
+      setDueDate("")
+    }
+  }, [isOpen, availableStatuses])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim() || isSubmitting) return
+
+    setIsSubmitting(true)
+    try {
+      await onCreateTask({
+        listId,
+        title: title.trim(),
+        status,
+        priority,
+        dueDate: dueDate || undefined,
+      })
+      onClose()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      {/* Dialog */}
+      <div className="relative bg-background rounded-lg shadow-lg w-full max-w-md mx-4 border">
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <h2 className="text-lg font-semibold">Create New Task</h2>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ×
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Title <span className="text-destructive">*</span>
+            </label>
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Enter task title..."
+              autoFocus
+              required
+            />
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {availableStatuses.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Priority */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Priority</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {availablePriorities.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="block text-sm font-medium mb-1">Due Date</label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={!title.trim() || isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Task"}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 function InlineNewTaskRow({
   listId,
   defaultStatus,
@@ -429,17 +573,33 @@ export default function ListPage({
   }, [taskTree, groupBy])
 
   // Handlers
-  const handleCreateTask = useCallback(() => {
-    if (!newTaskTitle.trim()) return
+  const handleCreateTask = useCallback((data: {
+    title: string
+    status?: string
+    priority?: string
+    dueDate?: string
+  }) => {
+    if (!data.title.trim()) return
     createTaskMutation.mutate({
       listId,
-      title: newTaskTitle.trim(),
-      status: "todo",
-      priority: "medium",
+      title: data.title.trim(),
+      status: data.status || "todo",
+      priority: data.priority || "medium",
+      dueDate: data.dueDate,
     })
     setNewTaskTitle("")
     setShowNewTask(false)
-  }, [newTaskTitle, listId, createTaskMutation])
+  }, [listId, createTaskMutation])
+
+  // Wrapper for the inline input (backward compatibility)
+  const handleInlineCreateTask = useCallback((data: {
+    listId: string
+    title: string
+    status?: string
+    priority?: string
+  }) => {
+    handleCreateTask({ title: data.title, status: data.status, priority: data.priority })
+  }, [handleCreateTask])
 
   const handleStatusChange = useCallback(
     (taskId: string, status: string) => {
@@ -785,7 +945,7 @@ export default function ListPage({
                   placeholder="Task name..."
                   className="flex-1 border-0 bg-transparent focus-visible:ring-0 h-8"
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreateTask()
+                    if (e.key === "Enter") handleCreateTask({ title: newTaskTitle, status: "todo", priority: "medium" })
                     if (e.key === "Escape") {
                       setShowNewTask(false)
                       setNewTaskTitle("")
@@ -793,7 +953,7 @@ export default function ListPage({
                   }}
                   autoFocus
                 />
-                <Button size="sm" onClick={handleCreateTask}>
+                <Button size="sm" onClick={() => handleCreateTask({ title: newTaskTitle, status: "todo", priority: "medium" })}>
                   Add
                 </Button>
                 <Button
@@ -885,7 +1045,7 @@ export default function ListPage({
                             listId={listId}
                             defaultStatus={groupBy === "status" ? groupKey : "todo"}
                             defaultPriority={groupBy === "priority" ? groupKey : undefined}
-                            onCreateTask={createTaskMutation.mutate}
+                            onCreateTask={handleInlineCreateTask}
                           />
                         </div>
                       )}
@@ -930,7 +1090,7 @@ export default function ListPage({
                       <InlineNewTaskRow
                         listId={listId}
                         defaultStatus="todo"
-                        onCreateTask={createTaskMutation.mutate}
+                        onCreateTask={handleInlineCreateTask}
                       />
                     </>
                   )
@@ -971,26 +1131,23 @@ export default function ListPage({
           </div>
         ) : viewMode === "board" ? (
           <div className="h-full">
-            {statuses && statuses.length > 0 ? (
-              <KanbanBoard
-                tasks={tasks || []}
-                statuses={statuses}
-                listId={listId}
-                workspaceId={workspaceId}
-              />
-            ) : (
-              <div className="p-12 text-center">
-                <LayoutGrid className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No statuses configured</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  This list doesn&apos;t have any statuses yet. Create tasks to get started.
-                </p>
-                <Button onClick={() => setShowNewTask(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Task
-                </Button>
-              </div>
-            )}
+            {/* Kanban fallback statuses */}
+            {(() => {
+              const kanbanStatuses = statuses && statuses.length > 0 ? statuses : [
+                { id: "default-todo", listId: listId, name: "To Do", color: "#94a3b8", order: 0, isDefault: true },
+                { id: "default-ip", listId: listId, name: "In Progress", color: "#3b82f6", order: 1, isDefault: false },
+                { id: "default-review", listId: listId, name: "In Review", color: "#f59e0b", order: 2, isDefault: false },
+                { id: "default-done", listId: listId, name: "Done", color: "#10b981", order: 3, isDefault: false },
+              ]
+              return (
+                <KanbanBoard
+                  tasks={tasks || []}
+                  statuses={kanbanStatuses}
+                  listId={listId}
+                  workspaceId={workspaceId}
+                />
+              )
+            })()}
           </div>
         ) : viewMode === "gantt" ? (
           <div className="h-full">
@@ -1050,6 +1207,16 @@ export default function ListPage({
           // Optionally show a success message or refresh tasks
           console.log(`Created ${count} tasks`)
         }}
+      />
+
+      {/* New Task Dialog - works from any view (board, gantt, calendar) */}
+      <NewTaskDialog
+        isOpen={showNewTask && viewMode !== "list"}
+        onClose={() => setShowNewTask(false)}
+        listId={listId}
+        availableStatuses={availableStatuses}
+        availablePriorities={availablePriorities}
+        onCreateTask={handleCreateTask}
       />
 
       {/* Task Detail Panel */}
