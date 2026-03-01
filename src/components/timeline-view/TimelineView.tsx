@@ -3,31 +3,21 @@
 import React, { useMemo, useState, useCallback } from "react"
 import { Gantt, Task as GanttTask, ViewMode } from "gantt-task-react"
 import "gantt-task-react/dist/index.css"
-import { format, parseISO, addDays, differenceInDays } from "date-fns"
-import { Calendar, Clock, GripVertical, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from "lucide-react"
+import { format, parseISO, addDays } from "date-fns"
+import { Calendar, Clock, ZoomIn, ZoomOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
 
 interface TimelineViewProps {
   tasks: TaskResponse[]
-  onTaskUpdate: (taskId: string, dueDate: string) => void
-  groupBy?: "space" | "project" | null
+  onTaskUpdate: (taskId: string, dueDate: string | undefined) => void
+  onTaskClick?: (taskId: string) => void
+  groupBy?: "status" | "priority" | null
   statuses?: { value: string; label: string; color: string }[]
-  workspaceMembers?: { id: string; name: string; avatar?: string }[]
 }
 
-type TimelineViewMode = "Day" | "Week" | "Month"
-
-// Priority colors
-const PRIORITY_COLORS: Record<string, string> = {
-  urgent: "#ef4444",
-  high: "#f97316",
-  medium: "#eab308",
-  low: "#22c55e",
-  none: "#6b7280",
-}
+type TimelineZoom = "Day" | "Week" | "Month"
 
 // Status colors
 const STATUS_COLORS: Record<string, string> = {
@@ -37,74 +27,65 @@ const STATUS_COLORS: Record<string, string> = {
   done: "#22c55e",
 }
 
-// Transform TaskResponse to GanttTask format
-function transformTaskToGantt(
-  task: TaskResponse,
-  index: number
-): GanttTask {
-  // Use createdAt as start date, dueDate as end date
-  // If no dueDate, default to 7 days from createdAt
-  const startDate = task.createdAt ? parseISO(task.createdAt) : new Date()
-  let endDate = task.dueDate ? parseISO(task.dueDate) : addDays(startDate, 7)
-  
-  // If endDate is before startDate, adjust it
-  if (endDate < startDate) {
-    endDate = addDays(startDate, 7)
+// Priority colors for progress bar
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: "#ef4444",
+  high: "#f97316",
+  medium: "#eab308",
+  low: "#22c55e",
+  none: "#94a3b8",
+}
+
+function taskToGantt(task: TaskResponse): GanttTask {
+  const start = task.createdAt ? parseISO(task.createdAt) : new Date()
+  let end = task.dueDate ? parseISO(task.dueDate) : addDays(start, 7)
+
+  // Ensure end is after start (at least 1 day)
+  if (end <= start) {
+    end = addDays(start, 1)
   }
 
-  const priority = task.priority || "none"
   const status = task.status || "todo"
+  const priority = task.priority || "none"
 
   return {
     id: task.id,
     name: task.title || "Untitled Task",
-    start: startDate,
-    end: endDate,
+    start,
+    end,
     type: "task",
-    progress: status === "done" ? 100 : status === "in_progress" ? 50 : 0,
+    progress: status === "done" ? 100 : status === "review" ? 75 : status === "in_progress" ? 50 : 0,
     isDisabled: false,
+    project: task.parentTaskId || undefined,
+    dependencies: task.parentTaskId ? [task.parentTaskId] : undefined,
     styles: {
       backgroundColor: STATUS_COLORS[status] || "#6b7280",
-      progressColor: PRIORITY_COLORS[priority] || "#6b7280",
-      progressSelectedColor: "#ffffff",
       backgroundSelectedColor: STATUS_COLORS[status] || "#6b7280",
+      progressColor: PRIORITY_COLORS[priority] || "#94a3b8",
+      progressSelectedColor: PRIORITY_COLORS[priority] || "#94a3b8",
     },
-    dependencies: task.parentTaskId ? [task.parentTaskId] : undefined,
   }
 }
 
-// Custom task bar component for more detail
-const TaskBarContent = ({
-  task,
-  isSelected,
-  onMouseDown,
-}: {
+// Custom tooltip
+const TooltipContent: React.FC<{
   task: GanttTask
-  isSelected: boolean
-  onMouseDown: (e: React.MouseEvent) => void
-}) => {
-  const duration = differenceInDays(task.end, task.start)
-  
+  fontSize: string
+  fontFamily: string
+}> = ({ task }) => {
+  const duration = Math.max(
+    1,
+    Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24))
+  )
   return (
-    <div
-      className={cn(
-        "flex items-center gap-1 px-2 py-1 rounded text-xs cursor-pointer transition-all",
-        isSelected ? "ring-2 ring-white ring-offset-1" : "",
-        "hover:opacity-90"
-      )}
-      style={{
-        backgroundColor: task.styles?.backgroundColor,
-        minWidth: "100px",
-      }}
-      onMouseDown={onMouseDown}
-    >
-      <GripVertical className="w-3 h-3 opacity-50 flex-shrink-0" />
-      <span className="truncate flex-1 text-white font-medium">
-        {task.name}
-      </span>
-      <span className="text-white/80 text-[10px] flex-shrink-0">
-        {duration}d
-      </span>
+    <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg p-3 text-sm max-w-xs">
+      <p className="font-semibold mb-1 truncate">{task.name}</p>
+      <div className="text-muted-foreground space-y-0.5 text-xs">
+        <p>Start: {format(task.start, "MMM d, yyyy")}</p>
+        <p>End: {format(task.end, "MMM d, yyyy")}</p>
+        <p>Duration: {duration} day{duration !== 1 ? "s" : ""}</p>
+        <p>Progress: {task.progress}%</p>
+      </div>
     </div>
   )
 }
@@ -112,124 +93,71 @@ const TaskBarContent = ({
 export function TimelineView({
   tasks,
   onTaskUpdate,
+  onTaskClick,
   groupBy = null,
   statuses = [],
-  workspaceMembers = [],
 }: TimelineViewProps) {
-  const [viewMode, setViewMode] = useState<TimelineViewMode>("Week")
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null)
-  const [columnWidth, setColumnWidth] = useState(300)
+  const [zoom, setZoom] = useState<TimelineZoom>("Week")
+  const [columnWidth, setColumnWidth] = useState(65)
 
-  // Transform tasks to Gantt format
+  // Transform tasks → gantt tasks, sorted by creation date
   const ganttTasks = useMemo(() => {
     if (!tasks || tasks.length === 0) return []
-    
-    // Filter tasks that have dates (createdAt is always available)
-    const validTasks = tasks.filter((t) => t.createdAt)
-    
-    // Sort by created date
-    const sorted = [...validTasks].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    )
-    
-    return sorted.map((task, index) => transformTaskToGantt(task, index))
+
+    return [...tasks]
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+      .map(taskToGantt)
   }, [tasks])
 
-  // Calculate date range for the view
-  const { start: viewStart, end: viewEnd } = useMemo(() => {
-    if (ganttTasks.length === 0) {
-      const now = new Date()
-      return {
-        start: addDays(now, -7),
-        end: addDays(now, 30),
-      }
-    }
-
-    const allDates = ganttTasks.flatMap((t) => [t.start, t.end])
-    const minDate = new Date(Math.min(...allDates.map((d) => d.getTime())))
-    const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime())))
-    
-    // Add padding
-    return {
-      start: addDays(minDate, -7),
-      end: addDays(maxDate, 14),
-    }
-  }, [ganttTasks])
-
-  // Handle task date changes (drag to reschedule)
-  const handleTaskChange = useCallback(
-    (task: GanttTask) => {
-      const newDueDate = format(task.end, "yyyy-MM-dd")
-      onTaskUpdate(task.id, newDueDate)
+  // Drag to reschedule
+  const handleDateChange = useCallback(
+    (task: GanttTask, _children: GanttTask[]) => {
+      onTaskUpdate(task.id, format(task.end, "yyyy-MM-dd"))
     },
     [onTaskUpdate]
   )
 
-  // Handle progress changes
-  const handleProgressChange = useCallback(
+  // Click to open task detail
+  const handleClick = useCallback(
     (task: GanttTask) => {
-      // Could implement status update based on progress
-      console.log("Progress changed:", task.progress)
+      onTaskClick?.(task.id)
     },
-    []
+    [onTaskClick]
   )
 
-  // Handle task selection
   const handleSelect = useCallback(
-    (task: GanttTask | null) => {
-      setSelectedTaskId(task?.id || null)
+    (_task: GanttTask, _isSelected: boolean) => {
+      // no-op for now, selection is visual only
     },
     []
   )
 
-  // Handle date scroll
-  const handleDateScroll = useCallback((direction: "left" | "right") => {
-    // This would scroll the timeline - could be implemented
-    console.log("Scroll:", direction)
+  // View mode mapping
+  const viewMode = zoom === "Day" ? ViewMode.Day : zoom === "Week" ? ViewMode.Week : ViewMode.Month
+
+  // Zoom helpers
+  const handleZoomIn = useCallback(() => {
+    setColumnWidth((w) => Math.min(w + 20, 200))
+  }, [])
+  const handleZoomOut = useCallback(() => {
+    setColumnWidth((w) => Math.max(w - 20, 30))
   }, [])
 
-  // Zoom controls
-  const handleZoom = useCallback((direction: "in" | "out") => {
-    setColumnWidth((prev) => {
-      if (direction === "in") return Math.min(prev + 100, 600)
-      return Math.max(prev - 100, 150)
-    })
-  }, [])
-
-  // Get view mode for gantt-task-react
-  const getGanttViewMode = () => {
-    switch (viewMode) {
-      case "Day":
-        return ViewMode.Day
-      case "Week":
-        return ViewMode.Week
-      case "Month":
-        return ViewMode.Month
-      default:
-        return ViewMode.Week
-    }
-  }
-
-  // Calculate task stats
+  // Stats
   const stats = useMemo(() => {
-    if (!tasks) return { total: 0, completed: 0, inProgress: 0, overdue: 0 }
-    
     const now = new Date()
-    const completed = tasks.filter((t) => t.status === "done").length
-    const inProgress = tasks.filter((t) => t.status === "in_progress").length
-    const overdue = tasks.filter(
-      (t) => t.dueDate && parseISO(t.dueDate) < now && t.status !== "done"
-    ).length
-
     return {
       total: tasks.length,
-      completed,
-      inProgress,
-      overdue,
+      completed: tasks.filter((t) => t.status === "done").length,
+      inProgress: tasks.filter((t) => t.status === "in_progress").length,
+      overdue: tasks.filter(
+        (t) => t.dueDate && parseISO(t.dueDate) < now && t.status !== "done"
+      ).length,
     }
   }, [tasks])
 
-  if (tasks.length === 0) {
+  // Empty state
+  if (!tasks.length) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-12 text-center">
         <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
@@ -243,140 +171,101 @@ export function TimelineView({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-muted rounded-md p-1">
-            <Button
-              variant={viewMode === "Day" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => setViewMode("Day")}
-            >
-              Day
-            </Button>
-            <Button
-              variant={viewMode === "Week" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => setViewMode("Week")}
-            >
-              Week
-            </Button>
-            <Button
-              variant={viewMode === "Month" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2"
-              onClick={() => setViewMode("Month")}
-            >
-              Month
-            </Button>
+      {/* ── Toolbar ─────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+        <div className="flex items-center gap-3">
+          {/* Time-scale switcher */}
+          <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
+            {(["Day", "Week", "Month"] as TimelineZoom[]).map((z) => (
+              <Button
+                key={z}
+                variant={zoom === z ? "secondary" : "ghost"}
+                size="sm"
+                className="h-7 px-2.5 text-xs"
+                onClick={() => setZoom(z)}
+              >
+                {z}
+              </Button>
+            ))}
           </div>
 
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleZoom("out")}
-            >
-              <ZoomOut className="h-4 w-4" />
+          {/* Zoom level */}
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+              <ZoomOut className="h-3.5 w-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => handleZoom("in")}
-            >
-              <ZoomIn className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+              <ZoomIn className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground">Total:</span>
-            <span className="font-medium">{stats.total}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground">Done:</span>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              {stats.completed}
+        {/* Stats chips */}
+        <div className="flex items-center gap-3 text-xs">
+          <span className="text-muted-foreground">
+            <span className="font-medium text-foreground">{stats.total}</span> tasks
+          </span>
+          {stats.completed > 0 && (
+            <Badge variant="outline" className="h-5 bg-green-50 text-green-700 border-green-200 text-[11px]">
+              {stats.completed} done
             </Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-muted-foreground">In Progress:</span>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {stats.inProgress}
+          )}
+          {stats.inProgress > 0 && (
+            <Badge variant="outline" className="h-5 bg-blue-50 text-blue-700 border-blue-200 text-[11px]">
+              {stats.inProgress} active
             </Badge>
-          </div>
+          )}
           {stats.overdue > 0 && (
-            <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">Overdue:</span>
-              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                {stats.overdue}
-              </Badge>
-            </div>
+            <Badge variant="outline" className="h-5 bg-red-50 text-red-700 border-red-200 text-[11px]">
+              {stats.overdue} overdue
+            </Badge>
           )}
         </div>
       </div>
 
-      {/* Gantt Chart */}
-      <div className="flex-1 overflow-auto bg-background">
+      {/* ── Gantt chart ─────────────────────────────────────── */}
+      <div className="flex-1 overflow-auto">
         {ganttTasks.length > 0 ? (
-          <div className="min-w-full" style={{ minHeight: "400px" }}>
-            <Gantt
-              tasks={ganttTasks}
-              viewMode={getGanttViewMode()}
-              onDateChange={handleTaskChange}
-              onProgressChange={handleProgressChange}
-              onSelect={handleSelect}
-              listCellWidth=""
-              columnWidth={columnWidth}
-              barFill={60}
-              ganttHeight={Math.max(400, ganttTasks.length * 48 + 100)}
-              arrowColor="#6b7280"
-              handleWidth={8}
-              todayColor="rgba(59, 130, 246, 0.1)"
-              barCornerRadius={4}
-              barBackgroundColor="#6b7280"
-            />
-          </div>
+          <Gantt
+            tasks={ganttTasks}
+            viewMode={viewMode}
+            onDateChange={handleDateChange}
+            onClick={handleClick}
+            onSelect={handleSelect}
+            columnWidth={columnWidth}
+            listCellWidth="155"
+            rowHeight={42}
+            barFill={65}
+            ganttHeight={0}
+            headerHeight={50}
+            handleWidth={8}
+            arrowColor="#94a3b8"
+            todayColor="rgba(59, 130, 246, 0.08)"
+            barCornerRadius={4}
+            barBackgroundColor="#6b7280"
+            barBackgroundSelectedColor="#475569"
+            fontSize="12px"
+            TooltipContent={TooltipContent}
+          />
         ) : (
-          <div className="flex items-center justify-center h-full p-12">
-            <div className="text-center">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                No valid tasks to display on timeline
-              </p>
-            </div>
+          <div className="flex items-center justify-center h-64">
+            <p className="text-sm text-muted-foreground">No displayable tasks</p>
           </div>
         )}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-6 px-4 py-2 border-t bg-muted/30 text-xs">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-[#6b7280]" />
-          <span className="text-muted-foreground">To Do</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-[#3b82f6]" />
-          <span className="text-muted-foreground">In Progress</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-[#eab308]" />
-          <span className="text-muted-foreground">Review</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-[#22c55e]" />
-          <span className="text-muted-foreground">Done</span>
-        </div>
+      {/* ── Legend ───────────────────────────────────────────── */}
+      <div className="flex items-center gap-5 px-4 py-2 border-t bg-muted/30 text-[11px]">
+        {Object.entries(STATUS_COLORS).map(([key, color]) => (
+          <div key={key} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+            <span className="text-muted-foreground capitalize">{key.replace("_", " ")}</span>
+          </div>
+        ))}
         <div className="flex-1" />
         <div className="flex items-center gap-1 text-muted-foreground">
           <Clock className="w-3 h-3" />
-          <span>Drag bars to reschedule</span>
+          <span>Drag bars to reschedule · Click to open</span>
         </div>
       </div>
     </div>

@@ -997,9 +997,8 @@ export default function ListPage({
             <TimelineView
               tasks={sortedTasks}
               onTaskUpdate={handleDueDateChange}
-              groupBy={null}
+              onTaskClick={(taskId) => setSelectedTask(taskId)}
               statuses={availableStatuses}
-              workspaceMembers={workspaceMembers || []}
             />
           </div>
         ) : viewMode === "calendar" ? (
@@ -1023,6 +1022,7 @@ export default function ListPage({
               </div>
             )}
           </div>
+        ) : null}
       </div>
 
       {/* Bulk Actions Bar */}
