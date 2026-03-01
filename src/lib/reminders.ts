@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { reminders, tasks, lists, spaces, workspaceMembers, taskAssignees, notifications } from "@/db/schema";
-import { eq, and, lte, isNull } from "drizzle-orm";
+import { reminders, notifications } from "@/db/schema";
+import { eq, and, lte } from "drizzle-orm";
 
 /**
  * Check for pending reminders and create notifications

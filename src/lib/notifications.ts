@@ -122,7 +122,7 @@ export async function getUsersByUsernames(usernames: string[]) {
   if (usernames.length === 0) return [];
 
   const { users } = await import("@/db/schema");
-  const { ilike, inArray, or } = await import("drizzle-orm");
+  const { ilike, or } = await import("drizzle-orm");
 
   // Build OR conditions for each username
   const conditions = usernames.map((username) => 
@@ -148,13 +148,21 @@ export async function notifyMentions(
   content: string,
   mentionedByUserId: string,
   entityType: string,
-  entityId: string
+  entityId: string,
+  taskTitle?: string
 ) {
   const usernames = parseMentions(content);
   if (usernames.length === 0) return [];
 
   const mentionedUsers = await getUsersByUsernames(usernames);
   
+  // Get the mentioner's name
+  const mentioner = await db.query.users.findFirst({
+    where: eq(users.id, mentionedByUserId),
+    columns: { name: true },
+  });
+  const mentionedByName = mentioner?.name || "Someone";
+
   const createdNotifications = [];
   for (const user of mentionedUsers) {
     // Don't notify the user who created the mention
@@ -163,10 +171,12 @@ export async function notifyMentions(
     const notification = await createNotification({
       userId: user.id,
       type: "mention",
-      title: `You were mentioned by ${user.name}`,
+      title: `You were mentioned by ${mentionedByName}`,
       message: `You were mentioned in a ${entityType}`,
       entityType,
       entityId,
+      taskTitle: taskTitle,
+      mentionedBy: mentionedByName,
     });
     createdNotifications.push(notification);
   }

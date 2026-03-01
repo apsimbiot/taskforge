@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { tasks, lists, spaces, workspaceMembers, reminders } from "@/db/schema";
+import { tasks, workspaceMembers, reminders } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 
