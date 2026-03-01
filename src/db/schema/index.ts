@@ -682,6 +682,41 @@ export const forms = pgTable(
   ]
 );
 
+// ─── Goals (OKRs) ─────────────────────────────────────────────────────────────
+export const goals = pgTable(
+  "goals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workspaceId: uuid("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    targetDate: timestamp("target_date"),
+    status: varchar("status", { length: 20 }).default("active"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("goals_workspace_idx").on(t.workspaceId)]
+);
+
+// ─── Key Results ─────────────────────────────────────────────────────────────
+export const keyResults = pgTable(
+  "key_results",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    goalId: uuid("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 255 }).notNull(),
+    targetValue: integer("target_value").notNull(),
+    currentValue: integer("current_value").default(0),
+    linkedTaskId: uuid("linked_task_id").references(() => tasks.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [index("key_results_goal_idx").on(t.goalId)]
+);
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RELATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -722,6 +757,27 @@ export const formsRelations = relations(forms, ({ one }) => ({
   list: one(lists, {
     fields: [forms.listId],
     references: [lists.id],
+  }),
+}));
+
+// ─── Goals Relations ─────────────────────────────────────────────────────────
+export const goalsRelations = relations(goals, ({ one, many }) => ({
+  workspace: one(workspaces, {
+    fields: [goals.workspaceId],
+    references: [workspaces.id],
+  }),
+  keyResults: many(keyResults),
+}));
+
+// ─── Key Results Relations ───────────────────────────────────────────────────
+export const keyResultsRelations = relations(keyResults, ({ one }) => ({
+  goal: one(goals, {
+    fields: [keyResults.goalId],
+    references: [goals.id],
+  }),
+  linkedTask: one(tasks, {
+    fields: [keyResults.linkedTaskId],
+    references: [tasks.id],
   }),
 }));
 
