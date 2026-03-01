@@ -659,6 +659,13 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const completedSubtasks = subtasks.filter((s) => s.status === "done").length
   // subtask completion shown via badge (e.g. "2/5") — no progress bar needed
 
+  // Labels hooks — must be before early return to avoid "fewer hooks" error
+  const { data: taskLabels = [] } = useTaskLabels(task?.id)
+  const createLabelMutation = useCreateLabel()
+  const deleteLabelMutation = useDeleteLabel()
+  const addTaskLabelMutation = useAddTaskLabel()
+  const removeTaskLabelMutation = useRemoveTaskLabel()
+
   if (!open || !task) return null
 
   // Find matching status object for current task
@@ -671,13 +678,6 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   ]
   
   const currentStatus = displayStatuses.find((s) => normalizeStatusName(s.name) === status)
-  
-  // Labels hook - use prop labels or fetch from API
-  const { data: taskLabels = [] } = useTaskLabels(task?.id)
-  const createLabelMutation = useCreateLabel()
-  const deleteLabelMutation = useDeleteLabel()
-  const addTaskLabelMutation = useAddTaskLabel()
-  const removeTaskLabelMutation = useRemoveTaskLabel()
   
   const priorityConfig = PRIORITIES.find((p) => p.value === priority)
 
