@@ -26,15 +26,20 @@ export function Notifications() {
     entityType?: string | null
     entityId?: string | null
     title: string
+    workspaceId?: string
+    spaceId?: string
+    listId?: string
   }) => {
     // Mark as read if not already
     if (!notification.read) {
       markReadMutation.mutate(notification.id)
     }
 
-    // For now, just mark as read without navigation
-    // The task navigation would require additional data (workspaceId, spaceId, listId)
-    // that isn't provided in the notification
+    // Navigate to the correct workspace-scoped URL if we have the context
+    if (notification.entityType === "task" && notification.workspaceId && notification.spaceId && notification.listId) {
+      const url = `/dashboard/workspaces/${notification.workspaceId}/spaces/${notification.spaceId}/lists/${notification.listId}`
+      router.push(url)
+    }
     
     setIsOpen(false)
   }

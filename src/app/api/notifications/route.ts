@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { notifications } from "@/db/schema";
+import { notifications, tasks, lists, spaces } from "@/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -28,30 +28,56 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
 
-    let query = db
+    let baseWhere = eq(notifications.userId, userId);
+    if (unreadOnly) {
+      baseWhere = and(
+        eq(notifications.userId, userId),
+        eq(notifications.read, false)
+      );
+    }
+
+    const userNotifications = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(baseWhere)
       .orderBy(desc(notifications.createdAt))
       .limit(limit)
       .offset(offset);
 
-    if (unreadOnly) {
-      query = db
-        .select()
-        .from(notifications)
-        .where(
-          and(
-            eq(notifications.userId, userId),
-            eq(notifications.read, false)
-          )
-        )
-        .orderBy(desc(notifications.createdAt))
-        .limit(limit)
-        .offset(offset);
-    }
+    // Enrich notifications with navigation context (workspaceId, spaceId, listId)
+    // by joining with tasks -> lists -> spaces when entityType is "task"
+    const enrichedNotifications = await Promise.all(
+      userNotifications.map(async (notification) => {
+        const enriched = { ...notification } as Record<string, unknown>;
+        
+        if (notification.entityType === "task" && notification.entityId) {
+          try {
+            const taskWithContext = await db
+              .select({
+                id: tasks.id,
+                listId: lists.id,
+                spaceId: spaces.id,
+                workspaceId: spaces.workspaceId,
+              })
+              .from(tasks)
+              .innerJoin(lists, eq(tasks.listId, lists.id))
+              .innerJoin(spaces, eq(lists.spaceId, spaces.id))
+              .where(eq(tasks.id, notification.entityId))
+              .limit(1);
 
-    const userNotifications = await query;
+            if (taskWithContext.length > 0) {
+              enriched.workspaceId = taskWithContext[0].workspaceId;
+              enriched.spaceId = taskWithContext[0].spaceId;
+              enriched.listId = taskWithContext[0].listId;
+            }
+          } catch (err) {
+            console.error("Error enriching notification:", err);
+          }
+        }
+        
+        return enriched;
+      })
+    );
 
     // Get unread count
     const unreadCount = await db
@@ -65,7 +91,7 @@ export async function GET(request: NextRequest) {
       );
 
     return NextResponse.json({
-      notifications: userNotifications,
+      notifications: enrichedNotifications,
       unreadCount: unreadCount[0]?.count || 0,
     });
   } catch (error) {

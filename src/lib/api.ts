@@ -361,6 +361,10 @@ export interface NotificationResponse {
   entityType: string | null
   entityId: string | null
   createdAt: string
+  // Navigation context (enriched from backend)
+  workspaceId?: string
+  spaceId?: string
+  listId?: string
 }
 
 export async function fetchNotifications(unreadOnly = false): Promise<{ notifications: NotificationResponse[]; unreadCount: number }> {
