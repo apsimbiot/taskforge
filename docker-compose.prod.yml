@@ -10,7 +10,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://taskforge:taskforge123@taskforge-postgres:5432/taskforge
       NEXTAUTH_URL: http://taskforge-prod.72.62.227.33.sslip.io
-      NEXTAUTH_SECRET: taskforge-prod-secret-key-change-me
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-ZoJNTTsMC3Px+9OD0750ZHqYpg2PLlC+LHOoTjLkxI0=}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       NEXT_PUBLIC_APP_URL: http://taskforge-prod.72.62.227.33.sslip.io
       NEXT_PUBLIC_MAIN_DOMAIN: 72.62.227.33.sslip.io
