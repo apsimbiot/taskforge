@@ -214,29 +214,9 @@ export async function PATCH(
     const oldTask = access.task;
     const changedFields = Object.keys(validatedData) as Array<keyof typeof validatedData>;
     
-    // Helper to format values for display in activity log
-    const formatValue = (val: unknown): string => {
-      if (val === null || val === undefined || val === "") return "empty";
-      if (typeof val === "string") return val;
-      if (typeof val === "number") return String(val);
-      if (typeof val === "boolean") return val ? "yes" : "no";
-      if (val instanceof Date) return val.toLocaleDateString();
-      // Handle ISO date strings
-      if (typeof val === "string" && val.includes("T")) {
-        try {
-          return new Date(val).toLocaleDateString();
-        } catch {
-          return val;
-        }
-      }
-      return String(val);
-    };
-    
     for (const field of changedFields) {
-      const oldVal = oldTask[field as keyof typeof oldTask];
-      const newVal = validatedData[field];
-      const oldValue = formatValue(oldVal);
-      const newValue = formatValue(newVal);
+      const oldValue = String(oldTask[field as keyof typeof oldTask] ?? "");
+      const newValue = String(validatedData[field] ?? "");
       
       if (oldValue !== newValue) {
         await db.insert(taskActivities).values({

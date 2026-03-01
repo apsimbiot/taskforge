@@ -148,15 +148,30 @@ function getInitials(name: string | null): string {
 
 /** Convert snake_case to Title Case */
 function humanize(str: string | null | undefined): string {
-  if (!str) return "empty"
-  // Try to parse as date if it looks like an ISO string
+  if (!str || str === "null" || str === "undefined") return "empty"
+  // Try to parse as date if it looks like an ISO string or timestamp
   if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
     try {
       const d = new Date(str)
       if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        // If time is midnight, show date only
+        if (d.getHours() === 0 && d.getMinutes() === 0) {
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        }
+        // Otherwise show date + time
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+          " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
       }
     } catch { /* not a date */ }
+  }
+  // Handle numeric timestamps
+  if (/^\d{10,13}$/.test(str)) {
+    try {
+      const d = new Date(Number(str))
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      }
+    } catch { /* not a timestamp */ }
   }
   return str
     .replace(/_/g, " ")
