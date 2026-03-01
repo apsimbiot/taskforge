@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { runAutomations } from "@/lib/automations";
 import { autoCreateDueDateReminder } from "@/lib/reminders";
+import { broadcastToWorkspace } from "@/lib/sse";
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
@@ -262,6 +263,12 @@ export async function PATCH(
       }
     }
 
+    // Broadcast SSE event to workspace
+    broadcastToWorkspace(oldTask.list.space.workspaceId, {
+      type: "task_updated",
+      data: { task: updatedTask, listId: oldTask.listId, userId: session.user.id },
+    });
+
     return NextResponse.json({ task: updatedTask });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -295,7 +302,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Task not found or access denied" }, { status: 404 });
     }
 
+    const workspaceId = access.task.list.space.workspaceId;
+    const listId = access.task.listId;
+
     await db.delete(tasks).where(eq(tasks.id, taskId));
+
+    // Broadcast SSE event to workspace
+    broadcastToWorkspace(workspaceId, {
+      type: "task_deleted",
+      data: { taskId, listId, userId: session.user.id },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

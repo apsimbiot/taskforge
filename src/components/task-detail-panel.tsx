@@ -75,6 +75,12 @@ import {
   useAddTaskDependency,
   useRemoveTaskDependency,
   useSearchWorkspaceTasks,
+  useLabels,
+  useCreateLabel,
+  useDeleteLabel,
+  useTaskLabels,
+  useAddTaskLabel,
+  useRemoveTaskLabel,
 } from "@/hooks/useQueries"
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -89,6 +95,7 @@ interface TaskDetailPanelProps {
   onTaskSelect?: (taskId: string) => void
   statuses: StatusResponse[]
   workspaceId?: string
+  labels?: { id: string; name: string; color: string }[]
 }
 
 type Priority = "none" | "low" | "medium" | "high" | "urgent"
@@ -254,7 +261,7 @@ function getActivityIcon(action: string): React.ReactNode {
   }
 }
 
-export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, statuses, workspaceId }: TaskDetailPanelProps) {
+export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, statuses, workspaceId, labels: propLabels }: TaskDetailPanelProps) {
   // If taskId is passed but task is not, fetch the task (for subtask navigation)
   const { data: fetchedTask, isLoading: taskLoading } = useTask(taskId)
   const currentTask = task || fetchedTask
@@ -640,7 +647,23 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   if (!open || !task) return null
 
   // Find matching status object for current task
-  const currentStatus = statuses.find((s) => normalizeStatusName(s.name) === status)
+  // Fallback default statuses if none are provided
+  const displayStatuses = statuses.length > 0 ? statuses : [
+    { id: "default-todo", name: "To Do", color: "#94a3b8", listId: "", order: 0, isDefault: true },
+    { id: "default-ip", name: "In Progress", color: "#3b82f6", listId: "", order: 1, isDefault: false },
+    { id: "default-review", name: "In Review", color: "#f59e0b", listId: "", order: 2, isDefault: false },
+    { id: "default-done", name: "Done", color: "#10b981", listId: "", order: 3, isDefault: false },
+  ]
+  
+  const currentStatus = displayStatuses.find((s) => normalizeStatusName(s.name) === status)
+  
+  // Labels hook - use prop labels or fetch from API
+  const { data: taskLabels = [] } = useTaskLabels(task?.id)
+  const createLabelMutation = useCreateLabel()
+  const deleteLabelMutation = useDeleteLabel()
+  const addTaskLabelMutation = useAddTaskLabel()
+  const removeTaskLabelMutation = useRemoveTaskLabel()
+  
   const priorityConfig = PRIORITIES.find((p) => p.value === priority)
 
   // Build breadcrumb from task's list/space data
@@ -749,7 +772,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {statuses.map((s) => (
+                      {displayStatuses.map((s) => (
                         <SelectItem key={s.id} value={normalizeStatusName(s.name)}>
                           <div className="flex items-center gap-2">
                             <div
@@ -988,15 +1011,21 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                 </div>
                 <PropertyRow label="Tags" icon={<Tag className="h-4 w-4" />}>
                   <div className="flex items-center gap-2 flex-wrap">
-                    {tags.map((tag, idx) => (
+                    {/* Show labels assigned to this task */}
+                    {taskLabels.map((label) => (
                       <Badge
-                        key={idx}
+                        key={label.id}
                         variant="secondary"
                         className="gap-1 pr-1"
+                        style={{ backgroundColor: label.color + "20", color: label.color, borderColor: label.color }}
                       >
-                        {tag}
+                        {label.name}
                         <button
-                          onClick={() => setTags(tags.filter((_, i) => i !== idx))}
+                          onClick={() => {
+                            if (task) {
+                              removeTaskLabelMutation.mutate({ taskId: task.id, labelId: label.id })
+                            }
+                          }}
                           className="ml-1 hover:text-destructive"
                         >
                           <X className="h-3 w-3" />
@@ -1007,21 +1036,76 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm" className="h-6 px-2 text-xs">
                           <Plus className="h-3 w-3 mr-1" />
-                          Add tag
+                          Add label
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[200px]" align="start">
-                        <Input
-                          value={newTag}
-                          onChange={(e) => setNewTag(e.target.value)}
-                          placeholder="Tag name"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && newTag.trim()) {
-                              setTags([...tags, newTag.trim()])
-                              setNewTag("")
-                            }
-                          }}
-                        />
+                      <PopoverContent className="w-[240px]" align="start">
+                        <div className="space-y-2">
+                          {/* Existing workspace labels */}
+                          {propLabels && propLabels.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground font-medium">Workspace Labels</p>
+                              <div className="flex flex-wrap gap-1">
+                                {propLabels
+                                  .filter((l) => !taskLabels.some((tl) => tl.id === l.id))
+                                  .map((label) => (
+                                    <button
+                                      key={label.id}
+                                      onClick={() => {
+                                        if (task) {
+                                          addTaskLabelMutation.mutate({ taskId: task.id, labelId: label.id })
+                                        }
+                                      }}
+                                      className="px-2 py-1 text-xs rounded-full border transition-colors hover:opacity-80"
+                                      style={{ backgroundColor: label.color + "20", color: label.color, borderColor: label.color }}
+                                    >
+                                      {label.name}
+                                    </button>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                          {/* Create new label */}
+                          <div className="space-y-1 pt-2 border-t">
+                            <p className="text-xs text-muted-foreground font-medium">Create New Label</p>
+                            <Input
+                              value={newTag}
+                              onChange={(e) => setNewTag(e.target.value)}
+                              placeholder="Label name"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newTag.trim() && workspaceId) {
+                                  createLabelMutation.mutate(
+                                    { workspaceId, name: newTag.trim(), color: "#6366f1" },
+                                    {
+                                      onSuccess: () => {
+                                        setNewTag("")
+                                      },
+                                    }
+                                  )
+                                }
+                              }}
+                            />
+                            {newTag.trim() && workspaceId && (
+                              <Button
+                                size="sm"
+                                className="w-full text-xs"
+                                onClick={() => {
+                                  createLabelMutation.mutate(
+                                    { workspaceId, name: newTag.trim(), color: "#6366f1" },
+                                    {
+                                      onSuccess: () => {
+                                        setNewTag("")
+                                      },
+                                    }
+                                  )
+                                }}
+                                disabled={createLabelMutation.isPending}
+                              >
+                                Create "{newTag.trim()}"
+                              </Button>
+                            )}
+                          </div>
+                        </div>
                       </PopoverContent>
                     </Popover>
                   </div>

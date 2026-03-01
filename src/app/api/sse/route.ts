@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { auth } from "@/auth"
+import { addConnection, removeConnection, type SSEEvent } from "@/lib/sse"
 
 export const dynamic = "force-dynamic"
 
@@ -11,14 +12,20 @@ export async function GET(request: NextRequest) {
   }
 
   const userId = session.user.id
+  const workspaceId = request.nextUrl.searchParams.get("workspaceId")
 
   // Create a readable stream for SSE
   const stream = new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder()
       
+      // Register connection if workspaceId is provided
+      if (workspaceId) {
+        addConnection(workspaceId, controller)
+      }
+      
       // Send initial connection message
-      controller.enqueue(encoder.encode(`event: connected\ndata: {"userId":"${userId}"}\n\n`))
+      controller.enqueue(encoder.encode(`event: connected\ndata: {"userId":"${userId}","workspaceId":"${workspaceId || ""}"}\n\n`))
 
       // Keepalive every 30 seconds
       const interval = setInterval(() => {
@@ -33,6 +40,9 @@ export async function GET(request: NextRequest) {
       // Clean up on close
       request.signal.addEventListener("abort", () => {
         clearInterval(interval)
+        if (workspaceId) {
+          removeConnection(workspaceId, controller)
+        }
         try {
           controller.close()
         } catch {

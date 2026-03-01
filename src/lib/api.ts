@@ -719,3 +719,54 @@ export async function removeTaskFromAllSprints(taskId: string): Promise<void> {
     method: "DELETE",
   })
 }
+
+// ── Labels ───────────────────────────────────────────────────────────────────
+export interface LabelResponse {
+  id: string
+  workspaceId: string
+  name: string
+  color: string
+}
+
+export interface TaskLabelsResponse {
+  labels: LabelResponse[]
+}
+
+export async function fetchLabels(workspaceId: string): Promise<LabelResponse[]> {
+  const data = await fetchJSON<{ labels: LabelResponse[] }>(`/workspaces/${workspaceId}/labels`)
+  return data.labels
+}
+
+export async function createLabel(
+  workspaceId: string,
+  data: { name: string; color?: string }
+): Promise<{ label: LabelResponse }> {
+  return fetchJSON(`/workspaces/${workspaceId}/labels`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteLabel(workspaceId: string, labelId: string): Promise<void> {
+  return fetchJSON(`/workspaces/${workspaceId}/labels/${labelId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function fetchTaskLabels(taskId: string): Promise<LabelResponse[]> {
+  const data = await fetchJSON<{ labels: LabelResponse[] }>(`/tasks/${taskId}/labels`)
+  return data.labels
+}
+
+export async function addTaskLabel(taskId: string, labelId: string): Promise<void> {
+  return fetchJSON(`/tasks/${taskId}/labels`, {
+    method: "POST",
+    body: JSON.stringify({ labelId }),
+  })
+}
+
+export async function removeTaskLabel(taskId: string, labelId: string): Promise<void> {
+  return fetchJSON(`/tasks/${taskId}/labels?labelId=${labelId}`, {
+    method: "DELETE",
+  })
+}

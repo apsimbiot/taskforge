@@ -5,6 +5,7 @@ import { tasks, lists, spaces, workspaceMembers, taskActivities } from "@/db/sch
 import { eq, and, asc } from "drizzle-orm";
 import { z } from "zod";
 import { runAutomations } from "@/lib/automations";
+import { broadcastToWorkspace } from "@/lib/sse";
 
 const createTaskSchema = z.object({
   title: z.string().min(1).max(500),
@@ -160,6 +161,12 @@ export async function POST(
     } catch (err) {
       console.error("Error running automations:", err);
     }
+
+    // Broadcast SSE event to workspace
+    broadcastToWorkspace(list.space.workspaceId, {
+      type: "task_created",
+      data: { task, listId, userId: session.user.id },
+    });
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

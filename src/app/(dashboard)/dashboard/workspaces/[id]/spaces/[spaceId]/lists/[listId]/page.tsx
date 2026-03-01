@@ -21,7 +21,7 @@ import { StatusBadge } from "@/components/status-badge"
 import { KanbanBoard } from "@/components/kanban-board"
 import { TaskDetailPanel } from "@/components/task-detail-panel"
 import { useTaskPanel } from "@/store/useTaskPanel"
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee, useList } from "@/hooks/useQueries"
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useStatuses, useWorkspaceMembers, useAddTaskAssignee, useRemoveTaskAssignee, useList, useLabels } from "@/hooks/useQueries"
 import { cn } from "@/lib/utils"
 import type { TaskResponse } from "@/lib/api"
 import { buildTaskTree, flattenTree, type TaskTreeNode } from "@/lib/task-tree"
@@ -237,6 +237,7 @@ export default function ListPage({
   const { data: list, isLoading: isListLoading } = useList(listId)
   const { data: tasks, isLoading } = useTasks(listId)
   const { data: statuses } = useStatuses(listId)
+  const { data: labels } = useLabels(workspaceId)
   const createTaskMutation = useCreateTask()
   const updateTaskMutation = useUpdateTask()
   const deleteTaskMutation = useDeleteTask()
@@ -1060,6 +1061,7 @@ export default function ListPage({
         onTaskSelect={setSelectedTask}
         statuses={statuses || []}
         workspaceId={workspaceId}
+        labels={labels}
       />
     </div>
   )

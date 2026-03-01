@@ -54,6 +54,12 @@ import {
   fetchTaskSprint,
   assignTaskToSprint,
   removeTaskFromAllSprints,
+  fetchLabels,
+  createLabel,
+  deleteLabel,
+  fetchTaskLabels,
+  addTaskLabel,
+  removeTaskLabel,
   type WorkspaceResponse,
   type SpaceResponse,
   type FolderResponse,
@@ -72,6 +78,7 @@ import {
   type CommentResponse,
   type CustomFieldDefinitionResponse,
   type TaskSprintResponse,
+  type LabelResponse,
 } from "@/lib/api"
 
 // ── Workspace Hooks ─────────────────────────────────────────────────────────
@@ -847,6 +854,68 @@ export function useDeleteAttachment() {
     },
     onSuccess: (_data, { taskId }) => {
       queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] })
+    },
+  })
+}
+
+// ── Labels Hooks ───────────────────────────────────────────────────────────
+
+export function useLabels(workspaceId: string | undefined) {
+  return useQuery<LabelResponse[]>({
+    queryKey: ["labels", workspaceId],
+    queryFn: () => fetchLabels(workspaceId!),
+    enabled: !!workspaceId,
+  })
+}
+
+export function useCreateLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workspaceId, ...data }: { workspaceId: string; name: string; color?: string }) =>
+      createLabel(workspaceId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["labels", variables.workspaceId] })
+    },
+  })
+}
+
+export function useDeleteLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workspaceId, labelId }: { workspaceId: string; labelId: string }) =>
+      deleteLabel(workspaceId, labelId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["labels", variables.workspaceId] })
+    },
+  })
+}
+
+export function useTaskLabels(taskId: string | undefined) {
+  return useQuery<LabelResponse[]>({
+    queryKey: ["task-labels", taskId],
+    queryFn: () => fetchTaskLabels(taskId!),
+    enabled: !!taskId,
+  })
+}
+
+export function useAddTaskLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, labelId }: { taskId: string; labelId: string }) =>
+      addTaskLabel(taskId, labelId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-labels", variables.taskId] })
+    },
+  })
+}
+
+export function useRemoveTaskLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, labelId }: { taskId: string; labelId: string }) =>
+      removeTaskLabel(taskId, labelId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-labels", variables.taskId] })
     },
   })
 }
