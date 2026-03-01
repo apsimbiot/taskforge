@@ -17,13 +17,12 @@ RUN npm run db:generate || true
 EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
-# Production stage
+# Builder stage
 FROM node:20-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache openssl
-ENV NODE_ENV=production
 
-# Install dependencies
+# Install ALL dependencies (including devDeps like TypeScript)
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 
@@ -34,6 +33,7 @@ COPY . .
 RUN npm run db:generate || true
 
 # Build the application
+ENV NODE_ENV=production
 RUN npm run build
 
 # Production stage
