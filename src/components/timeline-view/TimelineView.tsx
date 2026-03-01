@@ -19,7 +19,7 @@ interface TimelineViewProps {
 
 type TimelineZoom = "Day" | "Week" | "Month"
 
-// Status colors
+// Status colors - TaskForge theme
 const STATUS_COLORS: Record<string, string> = {
   todo: "#6b7280",
   in_progress: "#3b82f6",
@@ -30,7 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
 // Priority colors for progress bar
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "#ef4444",
-  high: "#f97316",
+  high: "#FF6B35",
   medium: "#eab308",
   low: "#22c55e",
   none: "#94a3b8",
@@ -78,8 +78,8 @@ const TooltipContent: React.FC<{
     Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24))
   )
   return (
-    <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg p-3 text-sm max-w-xs">
-      <p className="font-semibold mb-1 truncate">{task.name}</p>
+    <div className="bg-card border border-border rounded-xl shadow-xl p-3 text-sm max-w-xs" style={{ borderRadius: '12px' }}>
+      <p className="font-semibold mb-1 truncate font-sans">{task.name}</p>
       <div className="text-muted-foreground space-y-0.5 text-xs">
         <p>Start: {format(task.start, "MMM d, yyyy")}</p>
         <p>End: {format(task.end, "MMM d, yyyy")}</p>
@@ -170,18 +170,19 @@ export function TimelineView({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-card rounded-2xl overflow-hidden" style={{ borderRadius: '24px' }}>
       {/* ── Toolbar ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-card">
         <div className="flex items-center gap-3">
           {/* Time-scale switcher */}
-          <div className="flex items-center gap-0.5 bg-muted rounded-md p-0.5">
+          <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5" style={{ borderRadius: '12px' }}>
             {(["Day", "Week", "Month"] as TimelineZoom[]).map((z) => (
               <Button
                 key={z}
                 variant={zoom === z ? "secondary" : "ghost"}
                 size="sm"
-                className="h-7 px-2.5 text-xs"
+                className="h-8 px-3 text-xs font-medium rounded-lg"
+                style={{ borderRadius: '10px' }}
                 onClick={() => setZoom(z)}
               >
                 {z}
@@ -191,11 +192,11 @@ export function TimelineView({
 
           {/* Zoom level */}
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
-              <ZoomOut className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomOut}>
+              <ZoomOut className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
-              <ZoomIn className="h-3.5 w-3.5" />
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleZoomIn}>
+              <ZoomIn className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -206,17 +207,17 @@ export function TimelineView({
             <span className="font-medium text-foreground">{stats.total}</span> tasks
           </span>
           {stats.completed > 0 && (
-            <Badge variant="outline" className="h-5 bg-green-50 text-green-700 border-green-200 text-[11px]">
+            <Badge variant="outline" className="h-5 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-[11px]" style={{ borderRadius: '8px' }}>
               {stats.completed} done
             </Badge>
           )}
           {stats.inProgress > 0 && (
-            <Badge variant="outline" className="h-5 bg-blue-50 text-blue-700 border-blue-200 text-[11px]">
+            <Badge variant="outline" className="h-5 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800 text-[11px]" style={{ borderRadius: '8px' }}>
               {stats.inProgress} active
             </Badge>
           )}
           {stats.overdue > 0 && (
-            <Badge variant="outline" className="h-5 bg-red-50 text-red-700 border-red-200 text-[11px]">
+            <Badge variant="outline" className="h-5 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 text-[11px]" style={{ borderRadius: '8px' }}>
               {stats.overdue} overdue
             </Badge>
           )}
@@ -224,7 +225,7 @@ export function TimelineView({
       </div>
 
       {/* ── Gantt chart ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto p-2">
         {ganttTasks.length > 0 ? (
           <Gantt
             tasks={ganttTasks}
@@ -233,18 +234,19 @@ export function TimelineView({
             onClick={handleClick}
             onSelect={handleSelect}
             columnWidth={columnWidth}
-            listCellWidth="155"
-            rowHeight={42}
-            barFill={65}
+            listCellWidth="180"
+            rowHeight={48}
+            barFill={70}
             ganttHeight={0}
-            headerHeight={50}
-            handleWidth={8}
-            arrowColor="#94a3b8"
-            todayColor="rgba(59, 130, 246, 0.08)"
-            barCornerRadius={4}
-            barBackgroundColor="#6b7280"
-            barBackgroundSelectedColor="#475569"
-            fontSize="12px"
+            headerHeight={56}
+            handleWidth={10}
+            arrowColor="#FF6B35"
+            todayColor="rgba(255, 107, 53, 0.12)"
+            barCornerRadius={8}
+            barBackgroundColor="#e5e7eb"
+            barBackgroundSelectedColor="#d1d5db"
+            fontSize="13px"
+            fontFamily="Outfit, sans-serif"
             TooltipContent={TooltipContent}
           />
         ) : (
@@ -255,17 +257,17 @@ export function TimelineView({
       </div>
 
       {/* ── Legend ───────────────────────────────────────────── */}
-      <div className="flex items-center gap-5 px-4 py-2 border-t bg-muted/30 text-[11px]">
+      <div className="flex items-center gap-5 px-4 py-2.5 border-t bg-muted/30 text-[11px]">
         {Object.entries(STATUS_COLORS).map(([key, color]) => (
           <div key={key} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-            <span className="text-muted-foreground capitalize">{key.replace("_", " ")}</span>
+            <div className="w-3 h-3 rounded-md" style={{ backgroundColor: color, borderRadius: '6px' }} />
+            <span className="text-muted-foreground capitalize font-medium">{key.replace("_", " ")}</span>
           </div>
         ))}
         <div className="flex-1" />
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          <span>Drag bars to reschedule · Click to open</span>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Clock className="w-3.5 h-3.5" />
+          <span className="text-xs">Drag bars to reschedule · Click to open</span>
         </div>
       </div>
     </div>

@@ -332,3 +332,135 @@
   padding: 0.1rem 0.25rem;
   font-weight: 500;
 }
+
+/* ========================================
+   Gantt/Timeline View - TaskForge Theme
+   ======================================== */
+.gantt-container {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+.gantt-container .calendar-header {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.gantt-container .calendar-header .weekend {
+  background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+.gantt-container .grid-tick {
+  stroke: hsl(var(--border)) !important;
+}
+
+.gantt-container .grid-row {
+  fill: transparent !important;
+}
+
+.gantt-container .grid-tick:nth-child(6) {
+  stroke: hsl(var(--border)) !important;
+  stroke-width: 1px;
+}
+
+.gantt-container .today-line {
+  stroke: #FF6B35 !important;
+  stroke-width: 2px !important;
+}
+
+.gantt-container .bar-label {
+  fill: hsl(var(--foreground)) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+}
+
+.gantt-container .bar-progress {
+  fill: #FF6B35 !important;
+}
+
+.gantt-container .bar-progress-undo {
+  fill: #FF6B35 !important;
+  opacity: 0.3 !important;
+}
+
+.gantt-container .handle-bar {
+  fill: #FF6B35 !important;
+}
+
+.gantt-container .handle-progress {
+  fill: #FF6B35 !important;
+}
+
+.gantt-container .arrow {
+  fill: none !important;
+  stroke: #FF6B35 !important;
+  stroke-width: 2px !important;
+}
+
+.gantt-container .today-rect {
+  fill: rgba(255, 107, 53, 0.08) !important;
+}
+
+.gantt-container .month-grid-tick:nth-child(2) {
+  stroke: hsl(var(--border)) !important;
+}
+
+/* Task list styling */
+.gantt-container .task-list {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+.gantt-container .task-list-header {
+  background-color: hsl(var(--muted)) !important;
+  fill: hsl(var(--muted)) !important;
+}
+
+.gantt-container .task-list-item {
+  fill: transparent !important;
+}
+
+.gantt-container .task-list-item:nth-child(even) {
+  fill: hsl(var(--muted) / 0.3) !important;
+}
+
+.gantt-container .task-list-value {
+  fill: hsl(var(--foreground)) !important;
+  font-size: 13px !important;
+}
+
+/* Dark mode Gantt overrides */
+.dark .gantt-container .calendar-header {
+  background-color: hsl(var(--muted)) !important;
+}
+
+.dark .gantt-container .grid-row {
+  fill: transparent !important;
+}
+
+.dark .gantt-container .grid-tick {
+  stroke: hsl(var(--border)) !important;
+}
+
+.dark .gantt-container .bar-label {
+  fill: hsl(var(--foreground)) !important;
+}
+
+.dark .gantt-container .bar-background {
+  fill: hsl(var(--muted)) !important;
+}
+
+.dark .gantt-container .task-list-item:nth-child(even) {
+  fill: hsl(var(--muted) / 0.5) !important;
+}
+
+/* Tooltip styling */
+.gantt-task-react_tooltip {
+  font-family: 'Outfit', sans-serif !important;
+}
+
+/* Smooth transitions */
+.gantt-container .bar-wrapper {
+  transition: all 0.2s ease !important;
+}
+
+.gantt-container .bar-wrapper:hover {
+  filter: brightness(1.1) !important;
+}
