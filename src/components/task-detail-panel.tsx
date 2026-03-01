@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
+// Progress bar removed from subtasks section
 import { Skeleton } from "@/components/ui/skeleton"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -631,7 +631,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   }, [workspaceMembers, assigneeSearch])
 
   const completedSubtasks = subtasks.filter((s) => s.status === "done").length
-  const subtaskProgress = subtasks.length > 0 ? (completedSubtasks / subtasks.length) * 100 : 0
+  // subtask completion shown via badge (e.g. "2/5") — no progress bar needed
 
   if (!open || !task) return null
 
@@ -1512,9 +1512,6 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                       {completedSubtasks}/{subtasks.length}
                     </Badge>
                   </div>
-                  {subtasks.length > 0 && (
-                    <Progress value={subtaskProgress} className="h-1.5 w-24" />
-                  )}
                 </div>
 
                 {/* Rich Subtask Rows */}
