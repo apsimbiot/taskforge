@@ -5,22 +5,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: production
+      target: development
     container_name: taskforge-prod
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       DATABASE_URL: postgresql://taskforge:taskforge123@taskforge-postgres:5432/taskforge
       NEXTAUTH_URL: http://taskforge-prod.72.62.227.33.sslip.io
       NEXTAUTH_SECRET: taskforge-prod-secret-key-change-me
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       NEXT_PUBLIC_APP_URL: http://taskforge-prod.72.62.227.33.sslip.io
+      NEXT_PUBLIC_MAIN_DOMAIN: 72.62.227.33.sslip.io
       S3_ENDPOINT: http://taskforge-minio:9000
       S3_BUCKET: taskforge
       S3_ACCESS_KEY: taskforge
       S3_SECRET_KEY: taskforge123
       S3_REGION: us-east-1
       AUTH_TRUST_HOST: "true"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     ports:
       - "3002:3000"
     networks:
