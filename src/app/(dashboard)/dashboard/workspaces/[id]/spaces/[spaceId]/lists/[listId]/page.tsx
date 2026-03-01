@@ -6,6 +6,7 @@ import {
   List,
   LayoutGrid,
   GanttChart,
+  Calendar as CalendarIcon,
   ChevronDown,
   ChevronRight,
   Check,
@@ -32,8 +33,10 @@ import { FilterPopover, type FilterState } from "@/components/list-view/filter-p
 import { TaskTableRowWrapper } from "@/components/list-view/task-table-row-wrapper"
 import { BulkActionsBar } from "@/components/list-view/bulk-actions-bar"
 import { AIGenerateModal } from "@/components/ai/aigenerate-modal"
+import { TimelineView } from "@/components/timeline-view/TimelineView"
+import { CalendarView } from "@/components/calendar-view"
 
-type ViewMode = "list" | "board" | "gantt"
+type ViewMode = "list" | "board" | "gantt" | "calendar"
 type GroupByOption = "status" | "priority" | "assignee" | "dueDate" | "label" | null
 type SortByOption = "dueDate" | "priority" | "name" | "createdAt" | "updatedAt"
 type SortOrder = "asc" | "desc"
@@ -714,6 +717,15 @@ export default function ListPage({
                 <GanttChart className="h-4 w-4 mr-1" />
                 Gantt
               </Button>
+              <Button
+                variant={viewMode === "calendar" ? "secondary" : "ghost"}
+                size="sm"
+                className="rounded-none h-8"
+                onClick={() => setViewMode("calendar")}
+              >
+                <CalendarIcon className="h-4 w-4 mr-1" />
+                Calendar
+              </Button>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowAIGenerate(true)}>
@@ -980,16 +992,37 @@ export default function ListPage({
               </div>
             )}
           </div>
-        ) : (
-          // Gantt view placeholder
-          <div className="p-12 text-center">
-            <GanttChart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Gantt View</h3>
-            <p className="text-sm text-muted-foreground">
-              Coming soon — timeline visualization for your tasks.
-            </p>
+        ) : viewMode === "gantt" ? (
+          <div className="h-full">
+            <TimelineView
+              tasks={sortedTasks}
+              onTaskUpdate={handleDueDateChange}
+              groupBy={null}
+              statuses={availableStatuses}
+              workspaceMembers={workspaceMembers || []}
+            />
           </div>
-        )}
+        ) : viewMode === "calendar" ? (
+          <div className="h-full">
+            {tasks && tasks.length > 0 ? (
+              <CalendarView
+                tasks={tasks}
+                onTaskClick={(taskId) => setSelectedTask(taskId)}
+              />
+            ) : (
+              <div className="p-12 text-center">
+                <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No tasks yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add tasks with due dates to see them on the calendar.
+                </p>
+                <Button onClick={() => setShowNewTask(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Task
+                </Button>
+              </div>
+            )}
+          </div>
       </div>
 
       {/* Bulk Actions Bar */}
