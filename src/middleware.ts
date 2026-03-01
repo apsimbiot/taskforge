@@ -1,23 +1,22 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getTenantFromRequest } from "@/lib/tenant";
 
 // Main domain for multi-tenancy (configure for your environment)
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_MAIN_DOMAIN || "taskforge.dev";
 
-export default auth(async (req) => {
+export default auth((req) => {
   const { pathname, origin } = req.nextUrl;
   const hostname = req.headers.get("x-forwarded-host") || req.headers.get("host") || "";
+  const host = hostname.split(":")[0];
 
-  // Get tenant info from subdomain
-  const { workspace: tenant, isMainApp } = await getTenantFromRequest(hostname, MAIN_DOMAIN);
+  // Determine if this is a tenant subdomain
+  let subdomain: string | null = null;
+  let isMainApp = true;
 
-  // Attach tenant info to request headers for API routes
-  const requestHeaders = new Headers(req.headers);
-  if (tenant) {
-    requestHeaders.set("x-tenant-id", tenant.id);
-    requestHeaders.set("x-tenant-subdomain", tenant.subdomain || "");
+  if (host.endsWith(`.${MAIN_DOMAIN}`) && host !== `app.${MAIN_DOMAIN}` && host !== MAIN_DOMAIN) {
+    subdomain = host.replace(`.${MAIN_DOMAIN}`, "");
+    isMainApp = false;
   }
-  requestHeaders.set("x-is-main-app", isMainApp.toString());
 
   // Public paths that don't require auth
   const isPublicPath =
@@ -26,39 +25,42 @@ export default auth(async (req) => {
     pathname === "/register" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
-    pathname.startsWith("/api/ai/generate-tasks") ||
-    pathname.startsWith("/api/forms/") && pathname.endsWith("/public"); // Public form submissions
+    pathname.startsWith("/api/ai/generate-tasks");
 
   // Handle subdomain tenants
-  if (!isMainApp) {
+  if (!isMainApp && subdomain) {
     // Tenant-specific routes - require auth
-    if (!req.auth) {
+    if (!req.auth && !isPublicPath) {
+      // API routes should return 401 JSON, not redirect
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       const loginUrl = new URL("/login", origin);
       loginUrl.searchParams.set("redirect", pathname);
-      return Response.redirect(loginUrl);
+      return NextResponse.redirect(loginUrl);
     }
 
-    // Check if workspace is suspended
-    if (tenant?.status === "suspended") {
-      return new Response("Workspace suspended", { status: 403 });
-    }
-
-    // Add tenant header and continue
-    return Response.next({
-      request: { headers: requestHeaders },
-    });
+    // Set tenant headers for downstream use
+    const response = NextResponse.next();
+    response.headers.set("x-tenant-subdomain", subdomain);
+    response.headers.set("x-is-main-app", "false");
+    return response;
   }
 
   // Main app paths
   if (!req.auth && !isPublicPath) {
+    // API routes should return 401 JSON, not redirect
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     const loginUrl = new URL("/login", origin);
-    loginUrl.searchParams.set("redirect", pathname);
-    return Response.redirect(loginUrl);
+    return NextResponse.redirect(loginUrl);
   }
 
-  return Response.next({
-    request: { headers: requestHeaders },
-  });
+  // Continue with main app
+  const response = NextResponse.next();
+  response.headers.set("x-is-main-app", "true");
+  return response;
 });
 
 export const config = {
