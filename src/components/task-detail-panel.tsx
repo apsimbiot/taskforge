@@ -496,6 +496,10 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
         prevPathRef.current = window.location.pathname + window.location.search
         window.history.pushState({ taskId }, "", taskUrl)
       }
+    } else if (!open && prevPathRef.current) {
+      // Restore previous URL when panel closes
+      window.history.pushState({}, "", prevPathRef.current)
+      prevPathRef.current = ""
     }
   }, [open, taskId, workspaceId])
 
