@@ -61,6 +61,7 @@ export function TaskCard({ task, onClick, onDelete, onAssign, className }: TaskC
   const { data: assignees } = useTaskAssignees(task.id)
   const { data: subtasks } = useSubtasks(task.id)
   const { data: comments } = useComments(task.id)
+  const { data: dependencies } = useTaskDependencies(task.id)
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -99,6 +100,10 @@ export function TaskCard({ task, onClick, onDelete, onAssign, className }: TaskC
     ? PRIORITY_BORDER_COLORS[task.priority] || ""
     : ""
 
+  // Dependencies
+  const isBlocked = (dependencies?.blockedBy?.length ?? 0) > 0
+  const hasDeps = isBlocked || (dependencies?.blocks?.length ?? 0) > 0
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (onDelete && confirm("Are you sure you want to delete this task?")) {
@@ -131,6 +136,7 @@ export function TaskCard({ task, onClick, onDelete, onAssign, className }: TaskC
           "group relative flex flex-col gap-2 rounded-lg border border-border/50 bg-card p-3 shadow-sm transition-all duration-150 hover:border-border hover:shadow-md cursor-grab active:cursor-grabbing",
           priorityBorder && `border-l-[3px] ${priorityBorder}`,
           isDragging && "opacity-50 shadow-lg",
+          isBlocked && "opacity-60 ring-1 ring-orange-300/50 dark:ring-orange-700/50",
           className
         )}
       >
@@ -215,6 +221,33 @@ export function TaskCard({ task, onClick, onDelete, onAssign, className }: TaskC
               <Calendar className="h-3 w-3 mr-1" />
               {formatDueDate(task.dueDate).text}
             </Badge>
+          )}
+
+          {/* Dependency indicators */}
+          {isBlocked && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-medium border-orange-300 text-orange-600 dark:border-orange-700 dark:text-orange-400 gap-0.5">
+                  <Lock className="h-3 w-3" />
+                  Blocked
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Blocked by {dependencies!.blockedBy.length} task{dependencies!.blockedBy.length !== 1 ? "s" : ""}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {hasDeps && !isBlocked && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center">
+                  <Link2 className="h-3 w-3 text-blue-500" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Has dependencies</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
 

@@ -10,9 +10,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Calendar } from "@/components/ui/calendar"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { useTaskDependencies } from "@/hooks/useQueries"
 import type { TaskResponse } from "@/lib/api"
 import { Input } from "@/components/ui/input"
-import { Calendar as CalendarIcon, Plus, ChevronRight, ChevronDown, Pencil, ListPlus } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Calendar as CalendarIcon, Plus, ChevronRight, ChevronDown, Pencil, ListPlus, Link2, Lock } from "lucide-react"
 
 export interface TaskTableRowProps {
   task: TaskResponse
@@ -90,6 +92,9 @@ export function TaskTableRow({
   const [isEditing, setIsEditing] = React.useState(false)
   const [editTitle, setEditTitle] = React.useState(task.title)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const { data: deps } = useTaskDependencies(task.id)
+  const isBlocked = (deps?.blockedBy?.length ?? 0) > 0
+  const hasDeps = isBlocked || (deps?.blocks?.length ?? 0) > 0
 
   const cycleStatus = () => {
     const currentIndex = STATUS_ORDER.indexOf(status)
@@ -225,11 +230,33 @@ export function TaskTableRow({
             onClick={() => onClick?.(task.id)}
             className={cn(
               "text-sm truncate block text-left hover:text-primary hover:underline transition-colors cursor-pointer",
-              status === "done" && "line-through text-muted-foreground"
+              status === "done" && "line-through text-muted-foreground",
+              isBlocked && "opacity-60"
             )}
           >
             {task.title}
           </button>
+        )}
+        {/* Dependency indicator */}
+        {isBlocked && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Lock className="h-3 w-3 text-orange-500 flex-shrink-0 ml-1" />
+              </TooltipTrigger>
+              <TooltipContent><p>Blocked by {deps!.blockedBy.length} task{deps!.blockedBy.length !== 1 ? "s" : ""}</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {hasDeps && !isBlocked && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link2 className="h-3 w-3 text-blue-500 flex-shrink-0 ml-1" />
+              </TooltipTrigger>
+              <TooltipContent><p>Has dependencies</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
         {/* Subtask count badge */}
         {hasChildren && !isEditing && canHaveChildren && (
