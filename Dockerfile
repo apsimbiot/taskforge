@@ -51,7 +51,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/.env* ./
+# Only copy .env (not .env.local which has dev overrides)
+COPY --from=builder /app/.env ./
 
 USER nextjs
 
