@@ -144,14 +144,6 @@ export function TaskTableRow({
       {/* Indentation spacer — pushes all content including columns */}
       <div style={{ width: `${indentWidth}px` }} className="flex-shrink-0" />
 
-      {/* Visual connector line for subtasks */}
-      {depth > 0 && (
-        <div 
-          className="absolute left-0 top-0 bottom-0 w-px bg-border" 
-          style={{ left: `${indentWidth - 4}px` }}
-        />
-      )}
-
       {/* Checkbox */}
       <Checkbox
         checked={isSelected}
