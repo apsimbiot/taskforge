@@ -596,6 +596,25 @@ export async function fetchTaskDependencies(taskId: string): Promise<TaskDepende
   return data
 }
 
+export async function addTaskDependency(taskId: string, blockedTaskId: string): Promise<{ success: boolean; blockedBy: string[] }> {
+  return fetchJSON(`/tasks/${taskId}/dependencies`, {
+    method: "POST",
+    body: JSON.stringify({ blockedTaskId }),
+  })
+}
+
+export async function removeTaskDependency(taskId: string, blockedTaskId: string): Promise<{ success: boolean; blockedBy: string[] }> {
+  return fetchJSON(`/tasks/${taskId}/dependencies?blockedTaskId=${blockedTaskId}`, {
+    method: "DELETE",
+  })
+}
+
+export async function searchWorkspaceTasks(query: string, workspaceId: string): Promise<TaskResponse[]> {
+  const params = new URLSearchParams({ q: query })
+  const data = await fetchJSON<{ results: { tasks: TaskResponse[] } }>(`/workspaces/${workspaceId}/search?${params}`)
+  return data.results.tasks || []
+}
+
 // ── Custom Fields ─────────────────────────────────────────────────────────
 export interface CustomFieldDefinitionResponse {
   id: string

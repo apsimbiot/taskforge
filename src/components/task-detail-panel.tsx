@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react"
-import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban, FileText, Edit3, Eye } from "lucide-react"
+import { X, Calendar, Clock, CheckSquare, MessageSquare, Play, Pause, Square, Trash2, Plus, Check, Search, Link2, ChevronRight, Tag, Paperclip, AlertCircle, ArrowUpRight, MoreHorizontal, CircleCheckBig, Flag, Users, Timer, Gauge, ChevronDown, FolderKanban, FileText, Edit3, Eye, Lock, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -71,6 +71,10 @@ import {
   useTaskAttachments,
   useUploadAttachment,
   useDeleteAttachment,
+  useTaskDependencies,
+  useAddTaskDependency,
+  useRemoveTaskDependency,
+  useSearchWorkspaceTasks,
 } from "@/hooks/useQueries"
 import { CUSTOM_FIELD_TYPES, type CustomFieldType } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -336,6 +340,19 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const uploadAttachmentMutation = useUploadAttachment()
   const deleteAttachmentMutation = useDeleteAttachment()
 
+  // Dependencies hooks
+  const { data: dependencies, isLoading: dependenciesLoading } = useTaskDependencies(task?.id)
+  const addDependencyMutation = useAddTaskDependency()
+  const removeDependencyMutation = useRemoveTaskDependency()
+  const searchTasksMutation = useSearchWorkspaceTasks()
+
+  // Dependencies state
+  const [depSearchOpen, setDepSearchOpen] = useState(false)
+  const [depSearchQuery, setDepSearchQuery] = useState("")
+  const [depSearchResults, setDepSearchResults] = useState<TaskResponse[]>([])
+  const [depSearching, setDepSearching] = useState(false)
+  const depSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Attachment state
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -392,6 +409,55 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
       await deleteAttachmentMutation.mutateAsync({ taskId: task?.id, attachmentId })
     } catch (error) {
       console.error("Delete failed:", error)
+    }
+  }
+
+  // Dependency search with debounce
+  const handleDepSearch = useCallback((query: string) => {
+    setDepSearchQuery(query)
+    if (depSearchTimeout.current) clearTimeout(depSearchTimeout.current)
+    if (!query.trim() || query.trim().length < 2 || !workspaceId) {
+      setDepSearchResults([])
+      setDepSearching(false)
+      return
+    }
+    setDepSearching(true)
+    depSearchTimeout.current = setTimeout(async () => {
+      try {
+        const results = await searchTasksMutation.mutateAsync({ query, workspaceId })
+        // Filter out current task and tasks already linked
+        const blockedByIds = dependencies?.blockedBy ?? []
+        const blocksIds = dependencies?.blocks ?? []
+        const excludeIds = new Set([task?.id, ...blockedByIds, ...blocksIds])
+        setDepSearchResults(results.filter((t) => !excludeIds.has(t.id)))
+      } catch {
+        setDepSearchResults([])
+      } finally {
+        setDepSearching(false)
+      }
+    }, 300)
+  }, [workspaceId, task?.id, dependencies, searchTasksMutation])
+
+  // Add dependency: current task is blocked by selectedTask
+  const handleAddBlockedBy = async (blockingTaskId: string) => {
+    if (!task) return
+    try {
+      await addDependencyMutation.mutateAsync({ taskId: task.id, blockedTaskId: blockingTaskId })
+    } catch (error) {
+      console.error("Add dependency failed:", error)
+    }
+    setDepSearchOpen(false)
+    setDepSearchQuery("")
+    setDepSearchResults([])
+  }
+
+  // Remove dependency
+  const handleRemoveBlockedBy = async (blockingTaskId: string) => {
+    if (!task) return
+    try {
+      await removeDependencyMutation.mutateAsync({ taskId: task.id, blockedTaskId: blockingTaskId })
+    } catch (error) {
+      console.error("Remove dependency failed:", error)
     }
   }
 
@@ -1489,15 +1555,125 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 
               <Separator />
 
-              {/* Dependencies (placeholder) */}
+              {/* Dependencies */}
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Dependencies</span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Link2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Dependencies</span>
+                    {!dependenciesLoading && ((dependencies?.blockedBy?.length ?? 0) + (dependencies?.blocks?.length ?? 0)) > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-5">
+                        {(dependencies?.blockedBy?.length ?? 0) + (dependencies?.blocks?.length ?? 0)}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-md">
-                  No dependencies set
-                </div>
+
+                {dependenciesLoading ? (
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Blocked by */}
+                    {dependencies?.blockedBy && dependencies.blockedBy.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Lock className="h-3 w-3 text-orange-500" />
+                          <span className="text-xs font-medium text-muted-foreground">Blocked by</span>
+                        </div>
+                        <div className="space-y-1">
+                          {dependencies.blockedBy.map((depId) => (
+                            <DependencyChip
+                              key={depId}
+                              taskId={depId}
+                              onRemove={() => handleRemoveBlockedBy(depId)}
+                              onClick={() => onTaskSelect?.(depId)}
+                              variant="blockedBy"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Blocks */}
+                    {dependencies?.blocks && dependencies.blocks.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <ExternalLink className="h-3 w-3 text-blue-500" />
+                          <span className="text-xs font-medium text-muted-foreground">Blocking</span>
+                        </div>
+                        <div className="space-y-1">
+                          {dependencies.blocks.map((depId) => (
+                            <DependencyChip
+                              key={depId}
+                              taskId={depId}
+                              onRemove={() => {/* remove from the other side would need reverse API call */}}
+                              onClick={() => onTaskSelect?.(depId)}
+                              variant="blocks"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(!dependencies?.blockedBy?.length && !dependencies?.blocks?.length) && (
+                      <p className="text-xs text-muted-foreground">No dependencies set</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Add dependency */}
+                <Popover open={depSearchOpen} onOpenChange={(open) => {
+                  setDepSearchOpen(open)
+                  if (!open) {
+                    setDepSearchQuery("")
+                    setDepSearchResults([])
+                  }
+                }}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs mt-3">
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add dependency
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0" align="start">
+                    <div className="p-2 border-b">
+                      <div className="flex items-center gap-2 px-2">
+                        <Search className="h-3.5 w-3.5 text-muted-foreground" />
+                        <input
+                          className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1"
+                          placeholder="Search tasks to add as blocker..."
+                          value={depSearchQuery}
+                          onChange={(e) => handleDepSearch(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto">
+                      {depSearching ? (
+                        <div className="p-4 text-center text-xs text-muted-foreground">Searching…</div>
+                      ) : depSearchResults.length > 0 ? (
+                        <div className="py-1">
+                          {depSearchResults.map((r) => (
+                            <button
+                              key={r.id}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors text-left"
+                              onClick={() => handleAddBlockedBy(r.id)}
+                            >
+                              <Link2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="truncate">{r.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : depSearchQuery.length >= 2 ? (
+                        <div className="p-4 text-center text-xs text-muted-foreground">No tasks found</div>
+                      ) : (
+                        <div className="p-4 text-center text-xs text-muted-foreground">Type at least 2 characters</div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <Separator />
@@ -1762,6 +1938,42 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
 }
 
 // Helper Components
+
+/** Renders a single dependency link with task title lookup */
+function DependencyChip({
+  taskId,
+  variant,
+  onRemove,
+  onClick,
+}: {
+  taskId: string
+  variant: "blockedBy" | "blocks"
+  onRemove: () => void
+  onClick: () => void
+}) {
+  // Use the task query to get the title
+  const { data: depTask } = useTask(taskId)
+
+  return (
+    <div className="group flex items-center justify-between rounded-md border border-border/50 bg-muted/20 px-2.5 py-1.5 hover:bg-muted/40 transition-colors">
+      <button onClick={onClick} className="flex items-center gap-2 min-w-0 flex-1 text-left">
+        {variant === "blockedBy" ? (
+          <Lock className="h-3 w-3 text-orange-500 flex-shrink-0" />
+        ) : (
+          <ExternalLink className="h-3 w-3 text-blue-500 flex-shrink-0" />
+        )}
+        <span className="text-sm truncate">{depTask?.title ?? `Task ${taskId.slice(0, 8)}…`}</span>
+      </button>
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove() }}
+        className="ml-2 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:text-destructive transition-all flex-shrink-0"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}
+
 function PropertyRow({ label, icon, children }: { label: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex items-center py-2.5 border-b border-border/30">

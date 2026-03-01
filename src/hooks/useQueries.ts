@@ -44,6 +44,9 @@ import {
   createComment,
   deleteComment,
   fetchTaskDependencies,
+  addTaskDependency,
+  removeTaskDependency,
+  searchWorkspaceTasks,
   fetchCustomFields,
   createCustomField,
   updateCustomField,
@@ -666,6 +669,39 @@ export function useTaskDependencies(taskId: string | undefined) {
     queryKey: ["task-dependencies", taskId],
     queryFn: () => fetchTaskDependencies(taskId!),
     enabled: !!taskId,
+  })
+}
+
+export function useAddTaskDependency() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, blockedTaskId }: { taskId: string; blockedTaskId: string }) =>
+      addTaskDependency(taskId, blockedTaskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-dependencies", variables.taskId] })
+      queryClient.invalidateQueries({ queryKey: ["task-dependencies", variables.blockedTaskId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+export function useRemoveTaskDependency() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, blockedTaskId }: { taskId: string; blockedTaskId: string }) =>
+      removeTaskDependency(taskId, blockedTaskId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["task-dependencies", variables.taskId] })
+      queryClient.invalidateQueries({ queryKey: ["task-dependencies", variables.blockedTaskId] })
+      queryClient.invalidateQueries({ queryKey: ["tasks"] })
+    },
+  })
+}
+
+export function useSearchWorkspaceTasks() {
+  return useMutation({
+    mutationFn: ({ query, workspaceId }: { query: string; workspaceId: string }) =>
+      searchWorkspaceTasks(query, workspaceId),
   })
 }
 

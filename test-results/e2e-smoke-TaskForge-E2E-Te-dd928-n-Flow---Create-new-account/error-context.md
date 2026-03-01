@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]:
+    - img [ref=e8]
+  - alert [ref=e11]
+  - generic [ref=e13]:
+    - link "TF TaskForge" [ref=e15] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e16]: TF
+      - generic [ref=e17]: TaskForge
+    - generic [ref=e18]:
+      - heading "Create your account" [level=2] [ref=e19]
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e22]: Name
+          - textbox "Name" [ref=e23]:
+            - /placeholder: John Doe
+        - generic [ref=e24]:
+          - generic [ref=e25]: Email
+          - textbox "Email" [ref=e26]:
+            - /placeholder: you@example.com
+        - generic [ref=e27]:
+          - generic [ref=e28]: Password
+          - textbox "Password" [ref=e29]:
+            - /placeholder: Min. 8 characters
+        - generic [ref=e30]:
+          - generic [ref=e31]: Confirm Password
+          - textbox "Confirm Password" [ref=e32]:
+            - /placeholder: ••••••••
+        - button "Create Account" [ref=e33]
+      - generic [ref=e38]: Or continue with
+      - generic [ref=e39]:
+        - button "Google" [ref=e40]:
+          - img [ref=e41]
+          - text: Google
+        - button "GitHub" [ref=e46]:
+          - img [ref=e47]
+          - text: GitHub
+      - paragraph [ref=e49]:
+        - text: Already have an account?
+        - link "Sign in" [ref=e50] [cursor=pointer]:
+          - /url: /login
+```

@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { Calendar, Clock, Trash2, UserPlus, MessageSquare, CheckSquare, Flag } from "lucide-react"
+import { Calendar, Clock, Trash2, UserPlus, MessageSquare, CheckSquare, Flag, Link2, Lock } from "lucide-react"
 import { StatusBadge } from "@/components/status-badge"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { extractTextFromTiptap } from "@/lib/tiptap"
-import { useTaskAssignees, useSubtasks, useComments } from "@/hooks/useQueries"
+import { useTaskAssignees, useSubtasks, useComments, useTaskDependencies } from "@/hooks/useQueries"
 import type { TaskResponse } from "@/lib/api"
 
 const PRIORITY_BORDER_COLORS: Record<string, string> = {
