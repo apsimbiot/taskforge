@@ -19,19 +19,26 @@ const taskSchema = z.object({
   subtasks: z.array(z.string()).optional(),
 });
 
-const PROMPT = `Analyze the following content and extract actionable tasks.
+const IMPROVED_PROMPT = `You are an expert project manager. Analyze the following content and extract actionable tasks that need to be completed.
 
-Return a JSON array of tasks. Each task should have:
-- title: string (concise task title)
-- description: string (brief description)  
-- priority: "urgent" | "high" | "medium" | "low"
-- effort: string (optional, estimated effort like "1h", "2d", etc.)
-- subtasks: string[] (optional, list of subtasks)
+For each task, provide:
+- title: A clear, concise task title (action-oriented)
+- description: A brief description explaining what needs to be done
+- priority: One of "urgent", "high", "medium", or "low" - be strict and realistic
+- effort: Estimated effort in human-readable format (e.g., "15m", "2h", "1d", "1w")
+- subtasks: Array of smaller actionable steps needed to complete this task (if applicable)
 
-Respond ONLY with valid JSON array, no other text. Example:
+Guidelines:
+- Break down complex requests into multiple specific tasks
+- Set realistic priorities based on importance and urgency
+- Estimate effort based on typical scope
+- Include subtasks for multi-step tasks
+- Focus on actionable items, not abstract concepts
+
+Respond ONLY with a valid JSON array, no markdown, no explanations. Example format:
 [
-  {"title": "Task 1", "description": "Description", "priority": "high", "effort": "2h", "subtasks": ["Subtask 1", "Subtask 2"]},
-  {"title": "Task 2", "description": "Description", "priority": "medium"}
+  {"title": "Set up development environment", "description": "Install Node.js, configure IDE, clone repository", "priority": "high", "effort": "1h", "subtasks": ["Install Node.js LTS", "Configure VS Code extensions", "Clone repo and install deps"]},
+  {"title": "Implement user authentication", "description": "Add login/logout functionality with JWT", "priority": "urgent", "effort": "4h", "subtasks": ["Create auth API endpoints", "Add login form", "Implement session handling"]}
 ]`;
 
 export async function POST(request: NextRequest) {
@@ -53,10 +60,70 @@ export async function POST(request: NextRequest) {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
+    let promptContent = "";
     let result;
 
-    // Handle base64 data URLs (images and PDFs)
-    if (content.startsWith("data:")) {
+    // Handle different input types
+    if (type === "url") {
+      // Fetch URL content first
+      try {
+        const urlValidation = new URL(content);
+        if (!["http:", "https:"].includes(urlValidation.protocol)) {
+          return NextResponse.json(
+            { error: "Invalid URL protocol. Only HTTP and HTTPS are supported." },
+            { status: 400 }
+          );
+        }
+      } catch {
+        return NextResponse.json(
+          { error: "Invalid URL format" },
+          { status: 400 }
+        );
+      }
+
+      // Fetch the URL content
+      try {
+        const fetchResponse = await fetch(content, {
+          headers: {
+            "User-Agent": "TaskForge-AI/1.0 (AI Task Generator)",
+          },
+        });
+
+        if (!fetchResponse.ok) {
+          return NextResponse.json(
+            { error: `Failed to fetch URL: ${fetchResponse.status} ${fetchResponse.statusText}` },
+            { status: 400 }
+          );
+        }
+
+        const html = await fetchResponse.text();
+        
+        // Basic HTML to text extraction
+        const text = html
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+          .replace(/<[^>]+>/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+
+        // Truncate if too long
+        promptContent = text.length > 15000
+          ? text.substring(0, 15000) + "\n\n[Content truncated due to length...]"
+          : text;
+
+        result = await model.generateContent(
+          IMPROVED_PROMPT + `\n\nAnalyze the following content from URL: ${content}\n\nContent:\n${promptContent}`
+        );
+      } catch (fetchError) {
+        const msg = fetchError instanceof Error ? fetchError.message : "Unknown error";
+        console.error("URL fetch error:", msg);
+        return NextResponse.json(
+          { error: `Failed to fetch URL: ${msg}` },
+          { status: 400 }
+        );
+      }
+    } else if (content.startsWith("data:")) {
+      // Handle base64 data URLs (images and PDFs)
       const match = content.match(/^data:([^;]+);base64,(.+)$/);
       if (!match) {
         return NextResponse.json({ error: "Invalid file data" }, { status: 400 });
@@ -74,7 +141,7 @@ export async function POST(request: NextRequest) {
 
       // Send directly to Gemini — it handles images AND PDFs natively
       result = await model.generateContent([
-        PROMPT + "\n\nExtract actionable tasks from this file:",
+        IMPROVED_PROMPT + "\n\nExtract actionable tasks from this file:",
         { inlineData: { mimeType, data: base64Data } },
       ]);
     } else {
@@ -83,7 +150,7 @@ export async function POST(request: NextRequest) {
         ? content.substring(0, 15000) + "\n\n[Content truncated...]"
         : content;
       result = await model.generateContent(
-        PROMPT + `\n\nContent:\n${truncated}`
+        IMPROVED_PROMPT + `\n\nContent:\n${truncated}`
       );
     }
 
@@ -96,10 +163,18 @@ export async function POST(request: NextRequest) {
     let tasks;
     try {
       tasks = JSON.parse(cleanedText);
-    } catch {
+    } catch (parseError) {
       console.error("Failed to parse AI response:", cleanedText);
       return NextResponse.json(
-        { error: "Failed to parse AI response" },
+        { error: "AI returned invalid JSON. Please try again with different input." },
+        { status: 500 }
+      );
+    }
+
+    // Validate the response is an array
+    if (!Array.isArray(tasks)) {
+      return NextResponse.json(
+        { error: "AI response format invalid. Expected an array of tasks." },
         { status: 500 }
       );
     }

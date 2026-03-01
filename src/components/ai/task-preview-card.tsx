@@ -1,7 +1,7 @@
 "use client"
 
-import React from "react"
-import { X, GripVertical } from "lucide-react"
+import React, { useState } from "react"
+import { X, GripVertical, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -11,12 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
 export interface GeneratedTask {
   id: string
   title: string
   description: string
   priority: "urgent" | "high" | "medium" | "low"
+  effort?: string
+  subtasks?: string[]
 }
 
 interface TaskPreviewCardProps {
@@ -33,6 +36,28 @@ const PRIORITY_OPTIONS = [
 ]
 
 export function TaskPreviewCard({ task, onUpdate, onDelete }: TaskPreviewCardProps) {
+  const [showSubtasks, setShowSubtasks] = useState(false)
+  const [newSubtask, setNewSubtask] = useState("")
+
+  const handleAddSubtask = () => {
+    if (!newSubtask.trim()) return
+    const updatedSubtasks = [...(task.subtasks || []), newSubtask.trim()]
+    onUpdate(task.id, { subtasks: updatedSubtasks })
+    setNewSubtask("")
+  }
+
+  const handleRemoveSubtask = (index: number) => {
+    const updatedSubtasks = (task.subtasks || []).filter((_, i) => i !== index)
+    onUpdate(task.id, { subtasks: updatedSubtasks })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      handleAddSubtask()
+    }
+  }
+
   return (
     <div className="flex items-start gap-3 p-4 bg-background border rounded-lg hover:border-primary/50 transition-colors group">
       {/* Drag handle */}
@@ -58,8 +83,8 @@ export function TaskPreviewCard({ task, onUpdate, onDelete }: TaskPreviewCardPro
           className="min-h-[60px] resize-none text-sm"
         />
 
-        {/* Priority */}
-        <div className="flex items-center gap-2">
+        {/* Priority and Effort Row */}
+        <div className="flex items-center gap-3 flex-wrap">
           <Select
             value={task.priority}
             onValueChange={(value: "urgent" | "high" | "medium" | "low") =>
@@ -77,11 +102,83 @@ export function TaskPreviewCard({ task, onUpdate, onDelete }: TaskPreviewCardPro
               ))}
             </SelectContent>
           </Select>
+
+          {/* Effort Input */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Effort:</span>
+            <Input
+              value={task.effort || ""}
+              onChange={(e) => onUpdate(task.id, { effort: e.target.value })}
+              placeholder="e.g., 2h, 1d"
+              className="w-[100px] h-8 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Subtasks Section */}
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowSubtasks(!showSubtasks)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showSubtasks ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+            <span>
+              Subtasks ({(task.subtasks || []).length})
+            </span>
+          </button>
+
+          {showSubtasks && (
+            <div className="ml-5 space-y-2">
+              {/* Existing subtasks */}
+              {(task.subtasks || []).map((subtask, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 group/subtask"
+                >
+                  <span className="text-sm flex-1">{subtask}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSubtask(index)}
+                    className="opacity-0 group-hover/subtask:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-opacity"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Add new subtask */}
+              <div className="flex items-center gap-2">
+                <Input
+                  value={newSubtask}
+                  onChange={(e) => setNewSubtask(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Add a subtask..."
+                  className="h-7 text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleAddSubtask}
+                  disabled={!newSubtask.trim()}
+                  className="h-7 px-2"
+                >
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Delete button */}
       <button
+        type="button"
         onClick={() => onDelete(task.id)}
         className="mt-1 p-1 text-muted-foreground hover:text-destructive rounded opacity-0 group-hover:opacity-100 transition-opacity"
       >

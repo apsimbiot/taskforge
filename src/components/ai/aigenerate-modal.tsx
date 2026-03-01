@@ -34,6 +34,40 @@ interface AIGenerateModalProps {
 // Generate unique ID for preview tasks
 const generateId = () => Math.random().toString(36).substring(2, 15)
 
+// Convert effort string to minutes for timeEstimate
+const parseEffortToMinutes = (effort: string): number => {
+  const trimmed = effort.trim().toLowerCase()
+  
+  // Match patterns like "1h", "2h", "30m", "2d", "1w"
+  const hourMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*h(ours?)?$/)
+  if (hourMatch) {
+    return Math.round(parseFloat(hourMatch[1]) * 60)
+  }
+  
+  const minMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*m(in(utes?)?)?$/)
+  if (minMatch) {
+    return Math.round(parseFloat(minMatch[1]))
+  }
+  
+  const dayMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*d(ays?)?$/)
+  if (dayMatch) {
+    return Math.round(parseFloat(dayMatch[1]) * 60 * 8) // Assume 8h workday
+  }
+  
+  const weekMatch = trimmed.match(/^(\d+(?:\.\d+)?)\s*w(eeks?)?$/)
+  if (weekMatch) {
+    return Math.round(parseFloat(weekMatch[1]) * 60 * 8 * 5) // Assume 5-day week
+  }
+  
+  // Try to parse as raw number (assume hours)
+  const num = parseFloat(trimmed)
+  if (!isNaN(num)) {
+    return Math.round(num * 60)
+  }
+  
+  return 0
+}
+
 export function AIGenerateModal({
   isOpen,
   onClose,
@@ -97,17 +131,21 @@ export function AIGenerateModal({
 
       const data = await response.json()
 
-      // Convert AI response to our format with unique IDs
+      // Convert AI response to our format with unique IDs (including subtasks and effort)
       const tasks: GeneratedTask[] = (data.tasks || []).map(
         (task: {
           title: string
           description: string
           priority: "urgent" | "high" | "medium" | "low"
+          effort?: string
+          subtasks?: string[]
         }) => ({
           id: generateId(),
           title: task.title,
           description: task.description || "",
           priority: task.priority || "medium",
+          effort: task.effort || "",
+          subtasks: task.subtasks || [],
         })
       )
 
@@ -161,24 +199,59 @@ export function AIGenerateModal({
 
     try {
       // Use bulk API for better performance
+      // First, create all parent tasks
+      const parentTasks = validTasks.map((task) => ({
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        status: "todo",
+        // Convert effort string to timeEstimate in minutes
+        timeEstimate: task.effort ? parseEffortToMinutes(task.effort) : undefined,
+      }))
+
       const response = await fetch(`/api/lists/${listId}/tasks/bulk`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          tasks: validTasks.map((task) => ({
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            status: "todo",
-          })),
+          tasks: parentTasks,
         }),
       })
 
       if (!response.ok) {
         const data = await response.json()
         throw new Error(data.error || "Failed to create tasks")
+      }
+
+      const result = await response.json()
+      const createdTasks = result.tasks || []
+
+      // Now create subtasks for each parent task that has subtasks
+      for (let i = 0; i < createdTasks.length; i++) {
+        const parentTask = validTasks[i]
+        const createdParent = createdTasks[i]
+
+        if ((parentTask.subtasks || []).length > 0) {
+          const subtaskTasks = parentTask.subtasks!.map((subtaskTitle) => ({
+            title: subtaskTitle,
+            description: "",
+            priority: parentTask.priority,
+            status: "todo",
+            parentTaskId: createdParent.id,
+          }))
+
+          // Create subtasks
+          await fetch(`/api/lists/${listId}/tasks/bulk`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              tasks: subtaskTasks,
+            }),
+          })
+        }
       }
 
       // Success!
