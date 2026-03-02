@@ -1,33 +1,74 @@
-version: '3.8'
-
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: taskflow-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://taskflow:${POSTGRES_PASSWORD:-taskflow_secure_pwd}@postgres:5432/taskflow
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?Set NEXTAUTH_URL to your full domain e.g. https://app.taskflow.dev}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?Set NEXTAUTH_SECRET via openssl rand -base64 32}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      NEXT_PUBLIC_APP_URL: ${NEXTAUTH_URL}
+      NEXT_PUBLIC_MAIN_DOMAIN: ${MAIN_DOMAIN:?Set MAIN_DOMAIN e.g. taskflow.dev}
+      AUTH_TRUST_HOST: "true"
+
+      # OAuth (optional)
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
+
+      # MinIO / S3 (internal)
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: taskflow
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskflow}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-taskflow_minio_pwd}
+      S3_REGION: us-east-1
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - taskflow-network
+
   postgres:
     image: postgres:16-alpine
-    container_name: taskforge-postgres
+    container_name: taskflow-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: taskforge
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskforge}
-      POSTGRES_DB: taskforge
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskflow_secure_pwd}
+      POSTGRES_DB: taskflow
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U taskforge -d taskforge"]
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d taskflow"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - taskforge-network
-    labels:
-      - "traefik.enable=false"
+      - taskflow-network
 
   minio:
     image: minio/minio:latest
-    container_name: taskforge-minio
+    container_name: taskflow-minio
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-taskforge}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-taskforge}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-taskflow}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-taskflow_minio_pwd}
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -37,98 +78,12 @@ services:
       timeout: 20s
       retries: 3
     networks:
-      - taskforge-network
-    labels:
-      - "traefik.enable=false"
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: ${TARGET:-development}
-    container_name: taskforge-app
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    environment:
-      NODE_ENV: ${NODE_ENV:-development}
-      DATABASE_URL: postgresql://taskforge:${POSTGRES_PASSWORD:-taskforge}@postgres:5432/taskforge
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-$(openssl rand -base64 32)}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
-      NEXT_PUBLIC_MAIN_DOMAIN: ${NEXT_PUBLIC_MAIN_DOMAIN:-72.62.227.33.sslip.io}
-      
-      # OAuth Providers (optional)
-      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}
-      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET:-}
-      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID:-}
-      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET:-}
-      
-      # MinIO / S3
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: taskforge
-      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-taskforge}
-      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-taskforge}
-      S3_REGION: us-east-1
-    ports:
-      - "3000:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - taskforge-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.taskforge.rule=Host(`${DOMAIN:-localhost}`)"
-      - "traefik.http.routers.taskforge.entrypoints=websecure"
-      - "traefik.http.routers.taskforge.tls=true"
-      - "traefik.http.services.taskforge.loadbalancer.server.port=3000"
-
-  traefik:
-    image: traefik:v3.0
-    container_name: taskforge-traefik
-    restart: unless-stopped
-    depends_on:
-      - app
-    environment:
-      TRAEFIK_LOG_LEVEL: ${TRAEFIK_LOG_LEVEL:-INFO}
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_certs:/etc/traefik/acme
-    networks:
-      - taskforge-network
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/etc/traefik/acme/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-    labels:
-      - "traefik.enable=true"
+      - taskflow-network
 
 volumes:
   postgres_data:
   minio_data:
-  traefik_certs:
 
 networks:
-  taskforge-network:
+  taskflow-network:
     driver: bridge
