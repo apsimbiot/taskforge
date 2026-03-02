@@ -375,6 +375,9 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const [depSearching, setDepSearching] = useState(false)
   const depSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Auto-save debounce timers
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   // Attachment state
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -491,7 +494,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
       setStatus(task.status || "todo")
       setPriority((task.priority as Priority) || "none")
       setDueDate(task.dueDate ? new Date(task.dueDate) : undefined)
-      // Start date would come from task if available
+      setStartDate(task.startDate ? new Date(task.startDate) : undefined)
       setTimeEstimate(task.timeEstimate)
       setTimerSeconds(task.timeSpent || 0)
       setIsTimerRunning(false)
@@ -534,9 +537,42 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
       status,
       priority,
       dueDate: dueDate ? dueDate.toISOString() : undefined,
+      startDate: startDate ? startDate.toISOString() : undefined,
       timeEstimate: timeEstimate ?? undefined,
     })
-  }, [task, title, description, status, priority, dueDate, timeEstimate, updateTaskMutation])
+  }, [task, title, description, status, priority, dueDate, startDate, timeEstimate, updateTaskMutation])
+
+  // Debounced auto-save — clears any pending save and schedules a new one
+  const debouncedSave = useCallback(() => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      handleSave()
+    }, 1000) // Save 1 second after user stops typing
+  }, [handleSave])
+
+  // Auto-save on unmount (cleanup)
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+        // Force immediate save on unmount
+        if (task) {
+          updateTaskMutation.mutate({
+            taskId: task.id,
+            title,
+            description: (description ?? undefined) as string | Record<string, unknown> | undefined,
+            status,
+            priority,
+            dueDate: dueDate ? dueDate.toISOString() : undefined,
+            startDate: startDate ? startDate.toISOString() : undefined,
+            timeEstimate: timeEstimate ?? undefined,
+          })
+        }
+      }
+    }
+  }, [task, title, description, status, priority, dueDate, startDate, timeEstimate])
 
   const handleDelete = useCallback(() => {
     if (!task) return
@@ -747,7 +783,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
               {/* Task Title */}
               <Input
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => { setTitle(e.target.value); debouncedSave(); }}
                 onBlur={handleSave}
                 className="text-2xl font-bold border-0 px-0 focus-visible:ring-0 bg-transparent"
                 placeholder="Task title"
@@ -875,6 +911,12 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                           selected={startDate}
                           onSelect={(date) => {
                             setStartDate(date)
+                            if (task && date) {
+                              updateTaskMutation.mutate({
+                                taskId: task?.id,
+                                startDate: date.toISOString(),
+                              })
+                            }
                           }}
                           initialFocus
                         />
@@ -1599,7 +1641,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                 </label>
                 <RichTextEditor
                   content={description}
-                  onChange={(json) => { setDescription(json); }}
+                  onChange={(json) => { setDescription(json); debouncedSave(); }}
                   placeholder="Add a description..."
                   minHeight="120px"
                 />

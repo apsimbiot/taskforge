@@ -14,6 +14,7 @@ const updateTaskSchema = z.object({
   status: z.string().max(50).optional(),
   priority: z.enum(["urgent", "high", "medium", "low", "none"]).optional(),
   dueDate: z.string().datetime().nullable().optional(),
+  startDate: z.string().datetime().nullable().optional(),
   timeEstimate: z.number().min(0).nullable().optional(),
   timeSpent: z.number().min(0).optional(),
   order: z.number().optional(),
@@ -197,6 +198,7 @@ export async function PATCH(
     if (validatedData.status !== undefined) updateData.status = validatedData.status;
     if (validatedData.priority !== undefined) updateData.priority = validatedData.priority;
     if (validatedData.dueDate !== undefined) updateData.dueDate = validatedData.dueDate ? new Date(validatedData.dueDate) : null;
+    if (validatedData.startDate !== undefined) updateData.startDate = validatedData.startDate ? new Date(validatedData.startDate) : null;
     if (validatedData.timeEstimate !== undefined) updateData.timeEstimate = validatedData.timeEstimate;
     if (validatedData.timeSpent !== undefined) updateData.timeSpent = validatedData.timeSpent;
     if (validatedData.order !== undefined) updateData.order = validatedData.order;

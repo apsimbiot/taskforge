@@ -129,6 +129,7 @@ export const tasks = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     dueDate: timestamp("due_date"),
+    startDate: timestamp("start_date"),
     timeEstimate: integer("time_estimate"),
     timeSpent: integer("time_spent").default(0),
     order: integer("order").default(0),
@@ -146,6 +147,7 @@ export const tasks = pgTable(
     index("tasks_priority_idx").on(t.priority),
     index("tasks_parent_idx").on(t.parentTaskId),
     index("tasks_due_date_idx").on(t.dueDate),
+    index("tasks_start_date_idx").on(t.startDate),
   ]
 );
 

@@ -166,6 +166,7 @@ export interface TaskResponse {
   priority: string | null
   creatorId: string
   dueDate: string | null
+  startDate: string | null
   timeEstimate: number | null
   timeSpent: number | null
   order: number | null
@@ -207,6 +208,7 @@ export async function updateTask(
     status: string
     priority: string
     dueDate: string
+    startDate: string
     timeEstimate: number
     order: number
     customFields: Record<string, unknown>
