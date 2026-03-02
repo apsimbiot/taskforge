@@ -854,18 +854,19 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                     <Calendar className="h-4 w-4" />
                     Dates
                   </span>
-                  <div className="flex items-center gap-2 flex-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
+                          size="sm"
                           className={cn(
-                            "h-8 flex-1 justify-start text-left font-normal",
+                            "h-7 px-2 text-xs justify-start font-normal",
                             !startDate && "text-muted-foreground"
                           )}
                         >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {startDate ? startDate.toLocaleDateString() : "Start"}
+                          <Calendar className="mr-1.5 h-3 w-3 flex-shrink-0" />
+                          {startDate ? startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Start"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
@@ -879,18 +880,19 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
                         />
                       </PopoverContent>
                     </Popover>
-                    <span className="text-muted-foreground">→</span>
+                    <span className="text-muted-foreground text-xs">→</span>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
                           variant={"outline"}
+                          size="sm"
                           className={cn(
-                            "h-8 flex-1 justify-start text-left font-normal",
+                            "h-7 px-2 text-xs justify-start font-normal",
                             !dueDate && "text-muted-foreground"
                           )}
                         >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {dueDate ? dueDate.toLocaleDateString() : "Due"}
+                          <Calendar className="mr-1.5 h-3 w-3 flex-shrink-0" />
+                          {dueDate ? dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Due"}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
