@@ -26,6 +26,11 @@ RUN npm run db:generate || true
 ENV NODE_ENV=production
 RUN npm run build
 
+# Migration stage — runs drizzle-kit push against the live DB
+FROM builder AS migrator
+# This stage is used via: docker compose run --rm migrator
+CMD ["npx", "drizzle-kit", "push", "--force"]
+
 # Production stage — minimal runtime image
 FROM node:20-alpine AS production
 WORKDIR /app
@@ -42,10 +47,24 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/package.json ./
 
+# Copy drizzle config + migrations for runtime push
+COPY --from=builder /app/drizzle.config.ts ./
+COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/src/db ./src/db
+COPY --from=builder /app/node_modules ./node_modules
+
+# Startup script: run migrations then start app
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "Running database migrations..."' >> /app/start.sh && \
+    echo 'npx drizzle-kit push --force 2>&1 || echo "Migration warning (may be ok on first run)"' >> /app/start.sh && \
+    echo 'echo "Starting app..."' >> /app/start.sh && \
+    echo 'exec node server.js' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
 USER nextjs
 
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["/app/start.sh"]
