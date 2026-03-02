@@ -161,7 +161,7 @@ export function TimelineView(props: TimelineViewProps) {
   const hoveredTask = timelineData.taskBars.find(t => t.id === hoveredTaskId)
 
   return (
-    <div className="flex flex-col h-full bg-card rounded-2xl overflow-hidden border border-border">
+    <div className="flex flex-col h-full bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 border-b bg-card">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
