@@ -266,6 +266,7 @@ export function useUpdateTask() {
       status?: string
       priority?: string
       dueDate?: string
+      startDate?: string
       timeEstimate?: number
       order?: number
       customFields?: Record<string, unknown>

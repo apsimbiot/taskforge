@@ -375,8 +375,9 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
   const [depSearching, setDepSearching] = useState(false)
   const depSearchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Auto-save debounce timers
+  // Auto-save: track user-initiated changes (not server-triggered)
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isDirtyRef = useRef(false)
 
   // Attachment state
   const [isDragging, setIsDragging] = useState(false)
@@ -486,9 +487,15 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     }
   }
 
-  // Populate form when task changes
+  // Populate form when task changes (from server — NOT user edits)
   useEffect(() => {
     if (task) {
+      // Clear any pending auto-save — server data is authoritative
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+        autoSaveTimeoutRef.current = null
+      }
+      isDirtyRef.current = false
       setTitle(currentTask?.title || "")
       setDescription(task.description as Record<string, unknown> | null)
       setStatus(task.status || "todo")
@@ -499,7 +506,7 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
       setTimerSeconds(task.timeSpent || 0)
       setIsTimerRunning(false)
     }
-  }, [task])
+  }, [task?.id]) // Only re-populate when switching to a different task
 
   // Timer cleanup
   useEffect(() => {
@@ -542,37 +549,29 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
     })
   }, [task, title, description, status, priority, dueDate, startDate, timeEstimate, updateTaskMutation])
 
-  // Debounced auto-save — clears any pending save and schedules a new one
+  // Debounced auto-save — only fires if user actually made changes
   const debouncedSave = useCallback(() => {
+    isDirtyRef.current = true
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current)
     }
     autoSaveTimeoutRef.current = setTimeout(() => {
-      handleSave()
-    }, 1000) // Save 1 second after user stops typing
+      if (isDirtyRef.current) {
+        handleSave()
+        isDirtyRef.current = false
+      }
+    }, 1000)
   }, [handleSave])
 
-  // Auto-save on unmount (cleanup)
+  // Flush pending save on panel close
   useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current)
-        // Force immediate save on unmount
-        if (task) {
-          updateTaskMutation.mutate({
-            taskId: task.id,
-            title,
-            description: (description ?? undefined) as string | Record<string, unknown> | undefined,
-            status,
-            priority,
-            dueDate: dueDate ? dueDate.toISOString() : undefined,
-            startDate: startDate ? startDate.toISOString() : undefined,
-            timeEstimate: timeEstimate ?? undefined,
-          })
-        }
-      }
+    if (!open && isDirtyRef.current && autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+      autoSaveTimeoutRef.current = null
+      handleSave()
+      isDirtyRef.current = false
     }
-  }, [task, title, description, status, priority, dueDate, startDate, timeEstimate])
+  }, [open, handleSave])
 
   const handleDelete = useCallback(() => {
     if (!task) return
@@ -784,7 +783,14 @@ export function TaskDetailPanel({ task, taskId, open, onClose, onTaskSelect, sta
               <Input
                 value={title}
                 onChange={(e) => { setTitle(e.target.value); debouncedSave(); }}
-                onBlur={handleSave}
+                onBlur={() => {
+                  if (isDirtyRef.current) {
+                    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current)
+                    autoSaveTimeoutRef.current = null
+                    handleSave()
+                    isDirtyRef.current = false
+                  }
+                }}
                 className="text-2xl font-bold border-0 px-0 focus-visible:ring-0 bg-transparent"
                 placeholder="Task title"
               />
