@@ -42,7 +42,7 @@ cd taskforge
 # Copy environment variables
 cp .env.example .env.local
 
-# Start all services (Postgres, MinIO, Next.js, Traefik)
+# Start all services (Postgres, MinIO, Next.js)
 docker compose up -d
 
 # Run database migrations
